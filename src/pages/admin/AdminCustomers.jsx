@@ -91,7 +91,7 @@ export default function AdminCustomers() {
       {loading ? (
         <p style={{ color: "#5A6560" }}>Loading…</p>
       ) : (
-        <table className="ov-table">
+        <div className="ov-table-wrap"><table className="ov-table">
           <thead>
             <tr>
               <th>Phone</th>
@@ -108,7 +108,7 @@ export default function AdminCustomers() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
     </div>
   );

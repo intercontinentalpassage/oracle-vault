@@ -123,7 +123,7 @@ export default function AdminRefunds() {
           </div>
 
           <h3 style={{ fontSize: 14, marginBottom: 10 }}>Decided</h3>
-          <table className="ov-table">
+          <div className="ov-table-wrap"><table className="ov-table">
             <thead>
               <tr>
                 <th>Agent</th>
@@ -144,7 +144,7 @@ export default function AdminRefunds() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </>
       )}
     </div>

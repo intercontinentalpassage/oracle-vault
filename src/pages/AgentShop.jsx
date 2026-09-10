@@ -17,7 +17,8 @@ export default function AgentShop() {
   const [agent, setAgent] = useState(null);
   const [tickets, setTickets] = useState([]);
   const [groups, setGroups] = useState([]);
-  const [draw, setDraw] = useState(null);
+  const [resultsDraw, setResultsDraw] = useState(null);
+  const [nextDraw, setNextDraw] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [digits, setDigits] = useState([]);
@@ -44,7 +45,7 @@ export default function AgentShop() {
       }
       setAgent(agentRes.data);
 
-      const [ticketsRes, groupsRes, drawRes] = await Promise.all([
+      const [ticketsRes, groupsRes, resultsDrawRes] = await Promise.all([
         supabase.from("tickets").select("*").eq("agent_id", agentRes.data.id).order("number"),
         supabase.from("groups").select("*").order("sort_order"),
         supabase
@@ -56,10 +57,34 @@ export default function AgentShop() {
           .maybeSingle(),
       ]);
       if (cancelled) return;
-      setTickets(ticketsRes.data || []);
+      const ticketsData = ticketsRes.data || [];
       setGroups(groupsRes.data || []);
-      setDraw(drawRes.data || null);
-      const maxLen = Math.max(4, ...(ticketsRes.data || []).map((tk) => tk.number.length));
+      setResultsDraw(resultsDrawRes.data || null);
+
+      const drawIds = [...new Set(ticketsData.filter((tk) => tk.status === "available" && tk.draw_id).map((tk) => tk.draw_id))];
+      let visibleTickets = ticketsData;
+      if (drawIds.length > 0) {
+        const { data: relatedDraws } = await supabase.from("draws").select("*").in("id", drawIds);
+        if (!cancelled) {
+          const today = new Date().toISOString().slice(0, 10);
+          const byId = {};
+          (relatedDraws || []).forEach((d) => (byId[d.id] = d));
+          const upcoming = (relatedDraws || [])
+            .filter((d) => d.draw_date >= today)
+            .sort((a, b) => (a.draw_date < b.draw_date ? -1 : 1));
+          setNextDraw(upcoming[0] || null);
+          visibleTickets = ticketsData.filter((tk) => {
+            if (!tk.draw_id) return true;
+            const d = byId[tk.draw_id];
+            return !d || d.draw_date >= today;
+          });
+        }
+      } else if (!cancelled) {
+        setNextDraw(null);
+      }
+      if (cancelled) return;
+      setTickets(visibleTickets);
+      const maxLen = Math.max(4, ...visibleTickets.map((tk) => tk.number.length));
       setDigits(Array(maxLen).fill(""));
       setLoading(false);
     }
@@ -121,9 +146,7 @@ export default function AgentShop() {
         <div className="ov-hero-inner">
           <div className="ov-hero-grid">
             <div className="ov-hero" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div className="ov-next-draw-pill">
-                {draw ? t(lang, "nextDraw", { date: draw.label }) : t(lang, "noDrawPublished")}
-              </div>
+              {nextDraw && <div className="ov-next-draw-pill">{t(lang, "nextDraw", { date: nextDraw.label })}</div>}
               {agent.hero_image_url && (
                 <img
                   src={agent.hero_image_url}
@@ -144,7 +167,7 @@ export default function AgentShop() {
               setAnywhere={setAnywhere}
             />
           </div>
-          <DrawBanner lang={lang} draw={draw} />
+          <DrawBanner lang={lang} draw={resultsDraw} />
         </div>
       </section>
 

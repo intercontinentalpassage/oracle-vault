@@ -1,11 +1,14 @@
 import { useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { t } from "../lib/i18n";
+import { getCurrencySymbol, useSiteSettingsVersion } from "../lib/siteSettingsStore";
 
 export default function CartSummaryCard({ lang, cart, total, phone, name, onClose }) {
   const cardRef = useRef(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  useSiteSettingsVersion();
+  const currency = getCurrencySymbol();
 
   async function saveAsPhoto() {
     if (!cardRef.current) return;
@@ -42,7 +45,7 @@ export default function CartSummaryCard({ lang, cart, total, phone, name, onClos
             {cart.map((tk) => (
               <div key={tk.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
                 <span style={{ fontFamily: "'Space Mono', monospace", letterSpacing: "0.05em" }}>{tk.number}</span>
-                <span>฿{Number(tk.price || 0).toLocaleString()}</span>
+                <span>{currency}{Number(tk.price || 0).toLocaleString()}</span>
               </div>
             ))}
           </div>
@@ -51,7 +54,7 @@ export default function CartSummaryCard({ lang, cart, total, phone, name, onClos
 
           <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: 16 }}>
             <span>{t(lang, "total")}</span>
-            <span style={{ fontFamily: "'Space Mono', monospace" }}>฿{total.toLocaleString()}</span>
+            <span style={{ fontFamily: "'Space Mono', monospace" }}>{currency}{total.toLocaleString()}</span>
           </div>
 
           {(name || phone) && (

@@ -15,7 +15,8 @@ export default function Storefront() {
   const [lang, setLang] = useLang();
   const [tickets, setTickets] = useState([]);
   const [groups, setGroups] = useState([]);
-  const [draw, setDraw] = useState(null);
+  const [resultsDraw, setResultsDraw] = useState(null); // latest published results, shown in the numbers banner
+  const [nextDraw, setNextDraw] = useState(null); // the draw current available tickets are for
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [digits, setDigits] = useState([]);
@@ -29,7 +30,7 @@ export default function Storefront() {
       setLoading(true);
       setLoadError("");
       try {
-        const [ticketsRes, groupsRes, drawRes] = await Promise.all([
+        const [ticketsRes, groupsRes, resultsDrawRes] = await Promise.all([
           supabase.from("tickets").select("*").order("number"),
           supabase.from("groups").select("*").order("sort_order"),
           supabase
@@ -42,12 +43,42 @@ export default function Storefront() {
         ]);
         if (ticketsRes.error) throw ticketsRes.error;
         if (groupsRes.error) throw groupsRes.error;
-        if (drawRes.error) throw drawRes.error;
+        if (resultsDrawRes.error) throw resultsDrawRes.error;
         if (cancelled) return;
-        setTickets(ticketsRes.data || []);
+
+        const ticketsData = ticketsRes.data || [];
         setGroups(groupsRes.data || []);
-        setDraw(drawRes.data || null);
-        const maxLen = Math.max(4, ...(ticketsRes.data || []).map((tk) => tk.number.length));
+        setResultsDraw(resultsDrawRes.data || null);
+
+        // "Next draw" reads from whichever draw the currently-available
+        // tickets were entered under (set in Admin when adding tickets),
+        // not from published results — those are for a draw that already
+        // happened. Tickets tied to a draw whose date has already passed
+        // are treated as expired and hidden from the storefront entirely.
+        const drawIds = [...new Set(ticketsData.filter((tk) => tk.status === "available" && tk.draw_id).map((tk) => tk.draw_id))];
+        let visibleTickets = ticketsData;
+        if (drawIds.length > 0) {
+          const { data: relatedDraws } = await supabase.from("draws").select("*").in("id", drawIds);
+          if (!cancelled) {
+            const today = new Date().toISOString().slice(0, 10);
+            const byId = {};
+            (relatedDraws || []).forEach((d) => (byId[d.id] = d));
+            const upcoming = (relatedDraws || [])
+              .filter((d) => d.draw_date >= today)
+              .sort((a, b) => (a.draw_date < b.draw_date ? -1 : 1));
+            setNextDraw(upcoming[0] || null);
+            visibleTickets = ticketsData.filter((tk) => {
+              if (!tk.draw_id) return true;
+              const d = byId[tk.draw_id];
+              return !d || d.draw_date >= today;
+            });
+          }
+        } else if (!cancelled) {
+          setNextDraw(null);
+        }
+        if (cancelled) return;
+        setTickets(visibleTickets);
+        const maxLen = Math.max(4, ...visibleTickets.map((tk) => tk.number.length));
         setDigits(Array(maxLen).fill(""));
       } catch (e) {
         if (!cancelled) setLoadError(e.message || String(e));
@@ -112,9 +143,7 @@ export default function Storefront() {
         <div className="ov-hero-inner">
           <div className="ov-hero-grid">
             <div className="ov-hero" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div className="ov-next-draw-pill">
-                {draw ? t(lang, "nextDraw", { date: draw.label }) : t(lang, "noDrawPublished")}
-              </div>
+              {nextDraw && <div className="ov-next-draw-pill">{t(lang, "nextDraw", { date: nextDraw.label })}</div>}
               <h1>{t(lang, "searchTicketsHeading", { n: availableCount })}</h1>
               <p>{t(lang, "searchTicketsSub")}</p>
             </div>
@@ -128,7 +157,7 @@ export default function Storefront() {
               resultSummary={resultSummary}
             />
           </div>
-          <DrawBanner lang={lang} draw={draw} />
+          <DrawBanner lang={lang} draw={resultsDraw} />
         </div>
       </section>
 

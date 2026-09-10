@@ -93,7 +93,7 @@ export default function AdminAgents() {
       {loading ? (
         <p style={{ color: "#5A6560" }}>Loading…</p>
       ) : (
-        <table className="ov-table">
+        <div className="ov-table-wrap"><table className="ov-table">
           <thead>
             <tr>
               <th>Name</th>
@@ -124,7 +124,7 @@ export default function AdminAgents() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
     </div>
   );

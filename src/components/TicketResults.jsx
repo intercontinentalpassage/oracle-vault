@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { t } from "../lib/i18n";
 import { useCart } from "../lib/CartContext";
+import { getSiteSetting, useSiteSettingsVersion } from "../lib/siteSettingsStore";
 
 function matchesDigits(number, digits, anywhere) {
   const filled = digits.map((d, i) => [i, d]).filter(([, d]) => d);
@@ -14,6 +15,16 @@ function matchesDigits(number, digits, anywhere) {
 export default function TicketResults({ lang, tickets, groups, digits, anywhere, onClearSearch }) {
   const [filterKey, setFilterKey] = useState(null);
   const { add, remove, has } = useCart();
+  useSiteSettingsVersion();
+  const resultsBgUrl = getSiteSetting("results_bg_url");
+  const resultsBgOverlay = Number(getSiteSetting("results_bg_overlay") ?? 85);
+  const cardStyle = resultsBgUrl
+    ? {
+        backgroundImage: `linear-gradient(rgba(255,255,255,${resultsBgOverlay / 100}), rgba(255,255,255,${resultsBgOverlay / 100})), url(${resultsBgUrl})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }
+    : undefined;
 
   // Filter chips and group headings are driven entirely by the `groups`
   // table now, so anything added/renamed in Admin shows up automatically
@@ -73,7 +84,7 @@ export default function TicketResults({ lang, tickets, groups, digits, anywhere,
                 {group.tickets.map((tk) => {
                   const inCart = has(tk.id);
                   return (
-                    <div className={`ov-ticket-card${inCart ? " in-cart" : ""}`} key={tk.id}>
+                    <div className={`ov-ticket-card${inCart ? " in-cart" : ""}`} key={tk.id} style={cardStyle}>
                       <div className="ov-ticket-number-row">
                         <div className="ov-ticket-digits">
                           {tk.number.split("").map((d, i) => (

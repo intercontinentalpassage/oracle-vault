@@ -8,6 +8,16 @@ body {
 a { color: inherit; }
 button, select, input { font-family: inherit; }
 
+/* Shared entrance animations — CSS transitions only animate when a
+   property changes on an element already in the DOM, so they can't
+   animate something appearing for the first time. These @keyframes
+   animations play automatically on mount instead, which is what makes
+   popups/drawers feel like they're animating in rather than snapping on. */
+@keyframes ov-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ov-fade-in-down { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes ov-scale-in { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: scale(1); } }
+@keyframes ov-slide-in-right { from { transform: translateX(100%); } to { transform: translateX(0); } }
+
 .ov-page {
   min-height: 100vh;
   font-family: Sora, system-ui, sans-serif;
@@ -60,7 +70,9 @@ button, select, input { font-family: inherit; }
   text-decoration: none;
   display: inline-flex;
   align-items: center;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
 }
+.ov-nav-link:active { transform: scale(0.97); }
 .ov-nav-link.primary {
   border: none;
   background: #0F7A63;
@@ -96,6 +108,8 @@ button, select, input { font-family: inherit; }
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(14,21,18,.12);
   z-index: 30;
+  animation: ov-fade-in-down 0.15s ease;
+  transform-origin: top left;
 }
 .ov-lang-menu-item {
   padding: 9px 12px;
@@ -105,6 +119,7 @@ button, select, input { font-family: inherit; }
   color: #0E1512;
   cursor: pointer;
   white-space: nowrap;
+  transition: background-color 0.12s ease;
 }
 .ov-lang-menu-item:hover { background: #F4F8F6; }
 .ov-lang-menu-item.selected { background: #E6F4EF; color: #0B5C4A; }
@@ -160,8 +175,9 @@ button, select, input { font-family: inherit; }
   outline: none;
   caret-color: transparent;
   padding: 0;
+  transition: border-color 0.15s ease, transform 0.1s ease;
 }
-.ov-digit-input:focus { border-color: #0F7A63; }
+.ov-digit-input:focus { border-color: #0F7A63; transform: scale(1.03); }
 .ov-search-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .ov-checkbox-label { font-size: 13px; color: #5A6560; display: flex; align-items: center; gap: 8px; cursor: pointer; }
 .ov-checkbox-label input { width: 17px; height: 17px; accent-color: #0F7A63; cursor: pointer; }
@@ -186,11 +202,34 @@ button, select, input { font-family: inherit; }
   font-family: inherit; min-height: 44px; padding: 0 20px; border-radius: 999px;
   border: 1px solid #33403B; background: transparent; color: #F4F8F6;
   font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
+.ov-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.28s ease;
+}
+.ov-collapse.open { grid-template-rows: 1fr; }
+.ov-collapse-inner { overflow: hidden; }
 .ov-draw-tiers { border-top: 1px solid #222E29; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); }
 .ov-draw-tier { padding: 16px clamp(18px, 3vw, 28px); border-right: 1px solid #222E29; border-bottom: 1px solid #222E29; display: flex; flex-direction: column; gap: 6px; }
 .ov-draw-tier-label { font-size: 12px; font-weight: 600; color: #8FA69D; }
 .ov-draw-tier-numbers { font-family: 'Space Mono', monospace; font-size: 14px; font-weight: 700; line-height: 1.5; }
+.ov-draw-tier-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 6px;
+}
+.ov-draw-tier-number {
+  font-family: 'Space Mono', monospace;
+  font-size: 13px; font-weight: 700;
+  text-align: center;
+  padding: 6px 4px;
+  border-radius: 8px;
+  background: #1B2621;
+  color: #F4F8F6;
+  letter-spacing: 0.02em;
+}
 .ov-draw-tier-expand {
   font-family: inherit; font-size: 12px; font-weight: 600; color: #8FA69D;
   background: none; border: none; padding: 4px 0; cursor: pointer; text-decoration: underline;
@@ -208,6 +247,7 @@ button, select, input { font-family: inherit; }
   font-family: inherit; min-height: 40px; padding: 0 16px; border-radius: 999px;
   font-size: 13px; font-weight: 600; cursor: pointer;
   border: 1px solid #DDE3E0; background: #FFFFFF; color: #0E1512;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 .ov-filter-chip.active { border-color: #0F7A63; background: #0F7A63; color: #FFFFFF; }
 
@@ -225,17 +265,19 @@ button, select, input { font-family: inherit; }
 .ov-ticket-card {
   display: flex; flex-direction: column; gap: 12px;
   padding: 14px; border-radius: 16px;
-  background: #FFFFFF; border: 1.5px solid #E7EBE9;
+  background: #E7EBE8; border: 1.5px solid #D4DAD6;
   box-shadow: 0 1px 3px rgba(14,21,18,.05);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
 }
 .ov-ticket-card.in-cart { border-color: #0F7A63; }
 .ov-ticket-number-row { display: flex; align-items: center; gap: 8px; }
 .ov-ticket-digits { display: flex; gap: 4px; flex: 1 1 auto; }
 .ov-ticket-digit {
-  flex: 1 1 0; min-width: 0; aspect-ratio: .86;
+  flex: 1 1 0; min-width: 0; aspect-ratio: 1;
   display: flex; align-items: center; justify-content: center;
   font-family: 'Space Mono', monospace; font-size: clamp(15px, 2vw, 19px); font-weight: 700;
-  border-radius: 8px; background: #F4F8F6; color: #0E1512;
+  border-radius: 6px; background: #FFFFFF; color: #0E1512;
+  border: 1px solid #D4DAD6;
 }
 .ov-add-btn-sm {
   flex: 0 0 auto;
@@ -245,11 +287,14 @@ button, select, input { font-family: inherit; }
   cursor: pointer;
   border: 1px solid #0F7A63; background: #0F7A63; color: #FFFFFF;
   display: flex; align-items: center; justify-content: center;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
 }
+.ov-add-btn-sm:active { transform: scale(0.9); }
 .ov-add-btn-sm.added { border-color: #0F7A63; background: #FFFFFF; color: #0F7A63; }
 .ov-badge {
   font-size: 10px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
-  background: #F0F3F1; color: #5A6560; width: fit-content;
+  background: #FFFFFF; color: #5A6560; width: fit-content;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 .ov-badge.green { background: #0F7A63; color: #FFFFFF; font-weight: 700; }
 
@@ -263,26 +308,35 @@ button, select, input { font-family: inherit; }
   background: #0F7A63; color: #fff; border: none; border-radius: 999px;
   padding: 14px 20px; font-weight: 700; cursor: pointer;
   box-shadow: 0 6px 20px rgba(15,122,99,0.35); z-index: 20;
+  animation: ov-scale-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.15s ease;
 }
+.ov-cart-fab:active { transform: scale(0.95); }
 .ov-winner-fab {
   position: fixed; bottom: 20px; left: 20px;
   width: 52px; height: 52px;
   background: #0E1512; color: #fff; border: none; border-radius: 999px;
   display: flex; align-items: center; justify-content: center; cursor: pointer;
   box-shadow: 0 6px 20px rgba(14,21,18,0.3); z-index: 20;
+  transition: transform 0.15s ease;
 }
-.ov-cart-overlay { position: fixed; inset: 0; background: rgba(14,21,18,.4); display: flex; justify-content: flex-end; z-index: 50; }
-.ov-cart-panel { width: min(400px, 100%); height: 100%; background: #FFFFFF; padding: 20px; display: flex; flex-direction: column; overflow-y: auto; position: relative; }
+.ov-winner-fab:active { transform: scale(0.92); }
+.ov-cart-overlay { position: fixed; inset: 0; background: rgba(14,21,18,.4); display: flex; justify-content: flex-end; z-index: 50; animation: ov-fade-in 0.2s ease; }
+.ov-cart-panel { width: min(400px, 100%); height: 100%; background: #FFFFFF; padding: 20px; display: flex; flex-direction: column; overflow-y: auto; position: relative; animation: ov-slide-in-right 0.28s cubic-bezier(0.16, 1, 0.3, 1); }
 .ov-cart-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #F0F3F1; }
 .ov-input {
   width: 100%; padding: 12px 14px; border: 1.5px solid #DDE3E0; border-radius: 10px;
   font-size: 14px; margin-top: 6px;
+  transition: border-color 0.15s ease;
 }
+.ov-input:focus { border-color: #0F7A63; outline: none; }
 .ov-btn-primary {
   font-family: inherit; font-size: 14px; font-weight: 700;
   background: #0F7A63; color: #fff; border: none; border-radius: 10px;
   padding: 14px; cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease, opacity 0.15s ease;
 }
+.ov-btn-primary:active:not(:disabled) { transform: scale(0.98); }
 .ov-btn-primary:disabled { opacity: .6; cursor: default; }
 
 /* Footer */
@@ -294,6 +348,23 @@ button, select, input { font-family: inherit; }
 
 /* Admin/Agent shell */
 .ov-admin-shell { display: flex; min-height: 100vh; font-family: Sora, system-ui, sans-serif; }
+.ov-admin-topbar {
+  display: none;
+  position: sticky; top: 0; z-index: 40;
+  align-items: center; gap: 12px;
+  padding: 12px 16px;
+  background: #0E1512; color: #F4F8F6;
+}
+.ov-admin-hamburger {
+  width: 36px; height: 36px; flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: 1px solid #33403B; border-radius: 10px; color: #F4F8F6; cursor: pointer;
+}
+.ov-admin-sidebar-overlay {
+  display: none;
+  position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 49;
+  animation: ov-fade-in 0.15s ease;
+}
 .ov-admin-sidebar {
   width: 220px; flex: 0 0 220px; background: #0E1512; color: #F4F8F6;
   padding: 20px 14px; display: flex; flex-direction: column; gap: 4px;
@@ -303,24 +374,46 @@ button, select, input { font-family: inherit; }
 .ov-admin-nav-link {
   display: block; padding: 10px 12px; border-radius: 10px; font-size: 13px; font-weight: 600;
   color: #C9D6D1; text-decoration: none; cursor: pointer; border: none; background: none; text-align: left;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 .ov-admin-nav-link:hover { background: #1B2621; color: #F4F8F6; }
 .ov-admin-nav-link.active { background: #0F7A63; color: #FFFFFF; }
 .ov-admin-nav-link.back { margin-bottom: 8px; color: #8FA69D; }
 .ov-admin-nav-link.logout { margin-top: auto; color: #F4A9A0; }
 
-.ov-admin-content { flex: 1; padding: 28px clamp(20px, 3vw, 40px); max-width: 1200px; }
+.ov-admin-content { flex: 1; padding: 28px clamp(20px, 3vw, 40px); max-width: 1200px; min-width: 0; }
 .ov-admin-content h1 { font-size: 22px; margin: 0 0 20px; font-weight: 700; letter-spacing: -0.01em; }
 
+.ov-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .ov-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.ov-table th { text-align: left; padding: 10px 12px; color: #5A6560; font-weight: 600; border-bottom: 1px solid #E7EBE9; }
+.ov-table th { text-align: left; padding: 10px 12px; color: #5A6560; font-weight: 600; border-bottom: 1px solid #E7EBE9; white-space: nowrap; }
 .ov-table td { padding: 10px 12px; border-bottom: 1px solid #F0F3F1; vertical-align: middle; }
 .ov-table tr:hover td { background: #FAFCFB; }
+
+/* Below this width, the sidebar becomes an off-canvas drawer opened via
+   the hamburger button in the mobile topbar, instead of a fixed column
+   permanently taking up width. */
+@media (max-width: 860px) {
+  .ov-admin-shell { flex-direction: column; }
+  .ov-admin-topbar { display: flex; }
+  .ov-admin-sidebar {
+    position: fixed; inset: 0 auto 0 0; z-index: 50;
+    width: min(280px, 84vw); flex: none;
+    transform: translateX(-100%);
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow-y: auto;
+  }
+  .ov-admin-sidebar.open { transform: translateX(0); }
+  .ov-admin-sidebar-overlay.open { display: block; }
+  .ov-admin-content { padding: 20px 16px; max-width: 100%; }
+}
 
 .ov-btn-sm {
   font-family: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px;
   border-radius: 8px; border: 1px solid #DDE3E0; background: #FFFFFF; color: #0E1512; cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
 }
+.ov-btn-sm:active:not(:disabled) { transform: scale(0.97); }
 .ov-btn-sm.primary { border-color: #0F7A63; background: #0F7A63; color: #FFFFFF; }
 .ov-btn-sm.danger { border-color: #E3B4AC; background: #FFF5F3; color: #B23A2E; }
 .ov-btn-sm:disabled { opacity: .5; cursor: default; }
@@ -351,8 +444,9 @@ button, select, input { font-family: inherit; }
   justify-content: center;
   z-index: 60;
   padding: 20px;
+  animation: ov-fade-in 0.18s ease;
 }
-.ov-summary-wrap { width: 100%; max-width: 320px; }
+.ov-summary-wrap { width: 100%; max-width: 320px; animation: ov-scale-in 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
 .ov-summary-card {
   background: #FFFFFF;
   border-radius: 16px;

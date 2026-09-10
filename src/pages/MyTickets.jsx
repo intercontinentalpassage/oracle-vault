@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { t, useLang } from "../lib/i18n";
+import { getCurrencySymbol, useSiteSettingsVersion } from "../lib/siteSettingsStore";
 import LanguageSwitcher from "../components/LanguageSwitcher";
 
 function statusLabel(lang, status) {
@@ -18,6 +19,8 @@ export default function MyTickets() {
   const [searched, setSearched] = useState(false);
   const [results, setResults] = useState([]);
   const [error, setError] = useState("");
+  useSiteSettingsVersion();
+  const currency = getCurrencySymbol();
 
   async function lookup() {
     const cleanPhone = phone.trim();
@@ -81,7 +84,7 @@ export default function MyTickets() {
                   </div>
                   <div style={{ textAlign: "right" }}>
                     <div style={{ fontWeight: 600 }}>{statusLabel(lang, r.status)}</div>
-                    <div style={{ fontSize: 12, color: "#5A6560" }}>฿{Number(r.total || 0).toLocaleString()}</div>
+                    <div style={{ fontSize: 12, color: "#5A6560" }}>{currency}{Number(r.total || 0).toLocaleString()}</div>
                   </div>
                 </div>
               ))}

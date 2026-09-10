@@ -109,7 +109,7 @@ export default function AgentRefunds() {
           </div>
 
           <h3 style={{ fontSize: 14, marginBottom: 10 }}>History</h3>
-          <table className="ov-table">
+          <div className="ov-table-wrap"><table className="ov-table">
             <thead>
               <tr>
                 <th>Tickets</th>
@@ -130,7 +130,7 @@ export default function AgentRefunds() {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </>
       )}
     </div>

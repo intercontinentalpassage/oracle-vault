@@ -46,36 +46,46 @@ export default function DrawBanner({ lang, draw }) {
           </button>
         )}
       </div>
-      {showAll && tiers.length > 1 && (
-        <div className="ov-draw-tiers">
-          {tiers.map((tier, i) => {
-            const numbers = tier.numbers || [];
-            const many = numbers.length > EXPAND_THRESHOLD;
-            const expanded = expandedTiers.has(i);
-            return (
-              <div className="ov-draw-tier" key={i}>
-                <div className="ov-draw-tier-label">
-                  {tier.label || tier.name} · {tier.prize}
-                  {many && <span style={{ opacity: 0.7 }}> · {numbers.length} numbers</span>}
-                </div>
-                {numbers.length > 0 &&
-                  (many && !expanded ? (
-                    <button className="ov-draw-tier-expand" onClick={() => toggleTier(i)}>
-                      Show numbers
-                    </button>
-                  ) : (
-                    <>
-                      <div className="ov-draw-tier-numbers">{numbers.join(" · ")}</div>
-                      {many && (
-                        <button className="ov-draw-tier-expand" onClick={() => toggleTier(i)}>
-                          Hide
-                        </button>
-                      )}
-                    </>
-                  ))}
-              </div>
-            );
-          })}
+
+      {tiers.length > 1 && (
+        <div className={`ov-collapse${showAll ? " open" : ""}`}>
+          <div className="ov-collapse-inner">
+            <div className="ov-draw-tiers">
+              {tiers.map((tier, i) => {
+                const numbers = tier.numbers || [];
+                const many = numbers.length > EXPAND_THRESHOLD;
+                const expanded = !many || expandedTiers.has(i);
+                return (
+                  <div className="ov-draw-tier" key={i}>
+                    <div className="ov-draw-tier-label">
+                      {tier.label || tier.name} · {tier.prize}
+                      {many && <span style={{ opacity: 0.7 }}> · {numbers.length} numbers</span>}
+                    </div>
+                    {numbers.length > 0 && (
+                      <>
+                        <div className={`ov-collapse${expanded ? " open" : ""}`}>
+                          <div className="ov-collapse-inner">
+                            <div className="ov-draw-tier-grid">
+                              {numbers.map((n, ni) => (
+                                <span className="ov-draw-tier-number" key={ni}>
+                                  {n}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                        {many && (
+                          <button className="ov-draw-tier-expand" onClick={() => toggleTier(i)}>
+                            {expanded ? "Hide" : "Show numbers"}
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
     </div>

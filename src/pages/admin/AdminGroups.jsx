@@ -116,7 +116,7 @@ export default function AdminGroups() {
       {loading ? (
         <p style={{ color: "#5A6560" }}>Loading…</p>
       ) : (
-        <table className="ov-table">
+        <div className="ov-table-wrap"><table className="ov-table">
           <thead>
             <tr>
               <th>Order</th>
@@ -156,7 +156,7 @@ export default function AdminGroups() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
     </div>
   );

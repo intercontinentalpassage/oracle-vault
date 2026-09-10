@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import { getCurrencySymbol, useSiteSettingsVersion } from "../../lib/siteSettingsStore";
 
 const emptyTier = () => ({ label: "", prize: "", numbers: "" });
 
 export default function AdminDraws() {
+  useSiteSettingsVersion();
+  const currency = getCurrencySymbol();
   const [draws, setDraws] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -116,7 +119,7 @@ export default function AdminDraws() {
       if (numbers.length === 0) continue;
       await supabase
         .from("tickets")
-        .update({ win: `${tier.label} · ฿${tier.prize}` })
+        .update({ win: `${tier.label} · ${currency}${tier.prize}` })
         .in("number", numbers);
     }
   }
@@ -281,7 +284,7 @@ export default function AdminDraws() {
       {loading ? (
         <p style={{ color: "#5A6560" }}>Loading…</p>
       ) : (
-        <table className="ov-table">
+        <div className="ov-table-wrap"><table className="ov-table">
           <thead>
             <tr>
               <th>Label</th>
@@ -318,7 +321,7 @@ export default function AdminDraws() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
 
       {winnersFor && (
@@ -336,7 +339,7 @@ export default function AdminDraws() {
               None of these winning numbers exist as tickets in your system.
             </p>
           ) : (
-            <table className="ov-table">
+            <div className="ov-table-wrap"><table className="ov-table">
               <thead>
                 <tr>
                   <th>Number</th>
@@ -357,7 +360,7 @@ export default function AdminDraws() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           )}
         </div>
       )}

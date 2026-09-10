@@ -56,7 +56,7 @@ export default function AgentCatalog() {
       ) : tickets.length === 0 ? (
         <p style={{ color: "#5A6560" }}>No tickets assigned to you yet.</p>
       ) : (
-        <table className="ov-table">
+        <div className="ov-table-wrap"><table className="ov-table">
           <thead>
             <tr>
               <th>Number</th>
@@ -93,7 +93,7 @@ export default function AgentCatalog() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
     </div>
   );

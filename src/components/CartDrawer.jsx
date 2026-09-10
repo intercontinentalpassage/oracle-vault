@@ -2,6 +2,7 @@ import { useState } from "react";
 import { t } from "../lib/i18n";
 import { useCart } from "../lib/CartContext";
 import { supabase } from "../lib/supabaseClient";
+import { getCurrencySymbol, useSiteSettingsVersion } from "../lib/siteSettingsStore";
 import CartSummaryCard from "./CartSummaryCard";
 
 export default function CartDrawer({ lang, open, onClose, agentId }) {
@@ -12,6 +13,8 @@ export default function CartDrawer({ lang, open, onClose, agentId }) {
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
+  useSiteSettingsVersion();
+  const currency = getCurrencySymbol();
 
   if (!open) return null;
 
@@ -82,7 +85,7 @@ export default function CartDrawer({ lang, open, onClose, agentId }) {
                 <div className="ov-cart-item" key={tk.id}>
                   <span style={{ fontFamily: "'Space Mono', monospace" }}>{tk.number}</span>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span>฿{Number(tk.price || 0).toLocaleString()}</span>
+                    <span>{currency}{Number(tk.price || 0).toLocaleString()}</span>
                     <button className="ov-link-btn" style={{ color: "#B23A2E" }} onClick={() => remove(tk.id)}>
                       {t(lang, "remove")}
                     </button>
@@ -101,7 +104,7 @@ export default function CartDrawer({ lang, open, onClose, agentId }) {
               }}
             >
               <span>{t(lang, "total")}</span>
-              <span style={{ fontFamily: "'Space Mono', monospace" }}>฿{total.toLocaleString()}</span>
+              <span style={{ fontFamily: "'Space Mono', monospace" }}>{currency}{total.toLocaleString()}</span>
             </div>
 
             <button

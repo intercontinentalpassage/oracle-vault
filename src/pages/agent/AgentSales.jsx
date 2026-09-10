@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
+import { getCurrencySymbol, useSiteSettingsVersion } from "../../lib/siteSettingsStore";
 
 export default function AgentSales() {
+  useSiteSettingsVersion();
+  const currency = getCurrencySymbol();
   const { agentId } = useOutletContext();
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -35,7 +38,7 @@ export default function AgentSales() {
       <div style={{ display: "flex", gap: 16, marginBottom: 24 }}>
         <div className="ov-card" style={{ flex: 1 }}>
           <div style={{ fontSize: 12, color: "#5A6560" }}>Total revenue</div>
-          <div style={{ fontSize: 24, fontWeight: 800 }}>฿{total.toLocaleString()}</div>
+          <div style={{ fontSize: 24, fontWeight: 800 }}>{currency}{total.toLocaleString()}</div>
         </div>
         <div className="ov-card" style={{ flex: 1 }}>
           <div style={{ fontSize: 12, color: "#5A6560" }}>Tickets sold</div>
@@ -50,7 +53,7 @@ export default function AgentSales() {
             {days.map(([day, val]) => (
               <div key={day} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
                 <div
-                  title={`${day}: ฿${val.toLocaleString()}`}
+                  title={`${day}: ${currency}${val.toLocaleString()}`}
                   style={{
                     width: "100%",
                     height: `${Math.max(4, (val / maxVal) * 90)}px`,
@@ -68,7 +71,7 @@ export default function AgentSales() {
       {loading ? (
         <p style={{ color: "#5A6560" }}>Loading…</p>
       ) : (
-        <table className="ov-table">
+        <div className="ov-table-wrap"><table className="ov-table">
           <thead>
             <tr>
               <th>Ticket</th>
@@ -82,12 +85,12 @@ export default function AgentSales() {
               <tr key={s.id}>
                 <td style={{ fontFamily: "'Space Mono', monospace" }}>{s.tickets?.number || "—"}</td>
                 <td>{s.customer_phone}</td>
-                <td>฿{Number(s.price || 0).toLocaleString()}</td>
+                <td>{currency}{Number(s.price || 0).toLocaleString()}</td>
                 <td>{new Date(s.sold_at).toLocaleDateString()}</td>
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
     </div>
   );

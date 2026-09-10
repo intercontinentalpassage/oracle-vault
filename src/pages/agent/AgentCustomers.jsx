@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
+import { getCurrencySymbol, useSiteSettingsVersion } from "../../lib/siteSettingsStore";
 
 export default function AgentCustomers() {
+  useSiteSettingsVersion();
+  const currency = getCurrencySymbol();
   const { agentId } = useOutletContext();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -35,7 +38,7 @@ export default function AgentCustomers() {
       ) : rows.length === 0 ? (
         <p style={{ color: "#5A6560" }}>No sales yet.</p>
       ) : (
-        <table className="ov-table">
+        <div className="ov-table-wrap"><table className="ov-table">
           <thead>
             <tr>
               <th>Phone</th>
@@ -49,12 +52,12 @@ export default function AgentCustomers() {
               <tr key={r.phone}>
                 <td>{r.phone}</td>
                 <td>{r.count}</td>
-                <td>฿{r.total.toLocaleString()}</td>
+                <td>{currency}{r.total.toLocaleString()}</td>
                 <td>{new Date(r.lastSale).toLocaleDateString()}</td>
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
     </div>
   );

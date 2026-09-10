@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import { getCurrencySymbol, useSiteSettingsVersion } from "../../lib/siteSettingsStore";
 
 export default function AdminPurchaseRequests() {
+  useSiteSettingsVersion();
+  const currency = getCurrencySymbol();
   const [requests, setRequests] = useState([]);
   const [ticketsById, setTicketsById] = useState({});
   const [loading, setLoading] = useState(true);
@@ -165,7 +168,7 @@ export default function AdminPurchaseRequests() {
               </div>
 
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <strong>฿{Number(req.total || 0).toLocaleString()}</strong>
+                <strong>{currency}{Number(req.total || 0).toLocaleString()}</strong>
                 {req.status === "pending" && (
                   <div style={{ display: "flex", gap: 8 }}>
                     <button className="ov-btn-sm danger" disabled={busyId === req.id} onClick={() => reject(req)}>

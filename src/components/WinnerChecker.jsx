@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabaseClient";
+import { getCurrencySymbol, useSiteSettingsVersion } from "../lib/siteSettingsStore";
 
 function TicketIcon() {
   return (
@@ -32,6 +33,8 @@ export default function WinnerChecker() {
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState(undefined); // undefined = not checked yet, null = no draw, {} = win, false = no win
+  useSiteSettingsVersion();
+  const currency = getCurrencySymbol();
 
   function updateDigit(i, value) {
     const clean = value.replace(/\D/g, "").slice(-1);
@@ -141,7 +144,7 @@ export default function WinnerChecker() {
                 <div style={{ marginTop: 14, padding: 12, borderRadius: 10, background: "#E6F4EF" }}>
                   <p style={{ margin: 0, fontWeight: 700, color: "#0B5C4A" }}>You won!</p>
                   <p style={{ margin: "4px 0 0", fontSize: 13, color: "#0B5C4A" }}>
-                    {result.tier.label} · ฿{result.tier.prize} — {result.drawLabel}
+                    {result.tier.label} · {currency}{result.tier.prize} — {result.drawLabel}
                   </p>
                 </div>
               )}
