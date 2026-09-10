@@ -2,15 +2,7 @@ import { useMemo, useState } from "react";
 import { t } from "../lib/i18n";
 import { useCart } from "../lib/CartContext";
 import { getSiteSetting, useSiteSettingsVersion } from "../lib/siteSettingsStore";
-
-function matchesDigits(number, digits, anywhere) {
-  const filled = digits.map((d, i) => [i, d]).filter(([, d]) => d);
-  if (filled.length === 0) return true;
-  if (anywhere) {
-    return filled.every(([, d]) => number.includes(d));
-  }
-  return filled.every(([i, d]) => number[i] === d);
-}
+import { matchesDigits } from "../lib/ticketMatch";
 
 export default function TicketResults({ lang, tickets, groups, digits, anywhere, onClearSearch }) {
   const [filterKey, setFilterKey] = useState(null);

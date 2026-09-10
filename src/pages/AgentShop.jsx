@@ -10,6 +10,7 @@ import TicketResults from "../components/TicketResults";
 import CartDrawer from "../components/CartDrawer";
 import WinnerChecker from "../components/WinnerChecker";
 import BrandBadge from "../components/BrandBadge";
+import { matchesDigits } from "../lib/ticketMatch";
 
 export default function AgentShop() {
   const { slug } = useParams();
@@ -45,7 +46,7 @@ export default function AgentShop() {
       }
       setAgent(agentRes.data);
 
-      const [ticketsRes, groupsRes, resultsDrawRes] = await Promise.all([
+      const [ticketsRes, groupsRes, resultsDrawRes, allDrawsRes] = await Promise.all([
         supabase.from("tickets").select("*").eq("agent_id", agentRes.data.id).order("number"),
         supabase.from("groups").select("*").order("sort_order"),
         supabase
@@ -55,33 +56,30 @@ export default function AgentShop() {
           .order("draw_date", { ascending: false })
           .limit(1)
           .maybeSingle(),
+        supabase.from("draws").select("*"),
       ]);
       if (cancelled) return;
       const ticketsData = ticketsRes.data || [];
       setGroups(groupsRes.data || []);
       setResultsDraw(resultsDrawRes.data || null);
 
-      const drawIds = [...new Set(ticketsData.filter((tk) => tk.status === "available" && tk.draw_id).map((tk) => tk.draw_id))];
-      let visibleTickets = ticketsData;
-      if (drawIds.length > 0) {
-        const { data: relatedDraws } = await supabase.from("draws").select("*").in("id", drawIds);
-        if (!cancelled) {
-          const today = new Date().toISOString().slice(0, 10);
-          const byId = {};
-          (relatedDraws || []).forEach((d) => (byId[d.id] = d));
-          const upcoming = (relatedDraws || [])
-            .filter((d) => d.draw_date >= today)
-            .sort((a, b) => (a.draw_date < b.draw_date ? -1 : 1));
-          setNextDraw(upcoming[0] || null);
-          visibleTickets = ticketsData.filter((tk) => {
-            if (!tk.draw_id) return true;
-            const d = byId[tk.draw_id];
-            return !d || d.draw_date >= today;
-          });
-        }
-      } else if (!cancelled) {
-        setNextDraw(null);
-      }
+      // Next-draw + expiry filtering computed locally from the draws batch
+      // already fetched above — no extra network round-trip needed.
+      const today = new Date().toISOString().slice(0, 10);
+      const byId = {};
+      (allDrawsRes.data || []).forEach((d) => (byId[d.id] = d));
+      const referencedDrawIds = new Set(
+        ticketsData.filter((tk) => tk.status === "available" && tk.draw_id).map((tk) => tk.draw_id)
+      );
+      const upcoming = (allDrawsRes.data || [])
+        .filter((d) => referencedDrawIds.has(d.id) && d.draw_date >= today)
+        .sort((a, b) => (a.draw_date < b.draw_date ? -1 : 1));
+      setNextDraw(upcoming[0] || null);
+      const visibleTickets = ticketsData.filter((tk) => {
+        if (!tk.draw_id) return true;
+        const d = byId[tk.draw_id];
+        return !d || d.draw_date >= today;
+      });
       if (cancelled) return;
       setTickets(visibleTickets);
       const maxLen = Math.max(4, ...visibleTickets.map((tk) => tk.number.length));
@@ -96,6 +94,11 @@ export default function AgentShop() {
 
   const digitLength = digits.length || 4;
   const availableCount = useMemo(() => tickets.filter((tk) => tk.status === "available").length, [tickets]);
+  const matchCount = useMemo(() => {
+    const filled = digits.filter(Boolean).length;
+    if (!filled) return null;
+    return tickets.filter((tk) => tk.status === "available" && matchesDigits(tk.number, digits, anywhere)).length;
+  }, [tickets, digits, anywhere]);
 
   function clearSearch() {
     setDigits(Array(digitLength).fill(""));
@@ -165,6 +168,11 @@ export default function AgentShop() {
               setDigits={setDigits}
               anywhere={anywhere}
               setAnywhere={setAnywhere}
+              resultSummary={
+                digits.filter(Boolean).length
+                  ? `${matchCount} match${matchCount === 1 ? "" : "es"}`
+                  : "All tickets shown"
+              }
             />
           </div>
           <DrawBanner lang={lang} draw={resultsDraw} />
@@ -192,7 +200,13 @@ export default function AgentShop() {
         </button>
       )}
 
-      <CartDrawer lang={lang} open={cartOpen} onClose={() => setCartOpen(false)} agentId={agent.id} />
+      <CartDrawer
+        lang={lang}
+        open={cartOpen}
+        onClose={() => setCartOpen(false)}
+        agentId={agent.id}
+        currencyOverride={agent.currency_symbol}
+      />
       <WinnerChecker />
     </div>
   );

@@ -5,7 +5,7 @@ import { supabase } from "../lib/supabaseClient";
 import { getCurrencySymbol, useSiteSettingsVersion } from "../lib/siteSettingsStore";
 import CartSummaryCard from "./CartSummaryCard";
 
-export default function CartDrawer({ lang, open, onClose, agentId }) {
+export default function CartDrawer({ lang, open, onClose, agentId, currencyOverride }) {
   const { cart, remove, clear } = useCart();
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
@@ -14,7 +14,7 @@ export default function CartDrawer({ lang, open, onClose, agentId }) {
   const [sent, setSent] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   useSiteSettingsVersion();
-  const currency = getCurrencySymbol();
+  const currency = currencyOverride || getCurrencySymbol();
 
   if (!open) return null;
 
@@ -155,6 +155,7 @@ export default function CartDrawer({ lang, open, onClose, agentId }) {
             total={total}
             phone={phone}
             name={name}
+            currencyOverride={currencyOverride}
             onClose={() => setShowSummary(false)}
           />
         )}

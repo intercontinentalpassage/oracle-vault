@@ -214,7 +214,6 @@ button, select, input { font-family: inherit; }
 .ov-draw-tiers { border-top: 1px solid #222E29; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); }
 .ov-draw-tier { padding: 16px clamp(18px, 3vw, 28px); border-right: 1px solid #222E29; border-bottom: 1px solid #222E29; display: flex; flex-direction: column; gap: 6px; }
 .ov-draw-tier-label { font-size: 12px; font-weight: 600; color: #8FA69D; }
-.ov-draw-tier-numbers { font-family: 'Space Mono', monospace; font-size: 14px; font-weight: 700; line-height: 1.5; }
 .ov-draw-tier-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));

@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { getCurrencySymbol, getSiteSetting, setSiteSetting, useSiteSettingsVersion } from "../../lib/siteSettingsStore";
+import { compressImage } from "../../lib/imageCompress";
 import ChangePassword from "../../components/ChangePassword";
 import BrandBadge from "../../components/BrandBadge";
 
@@ -25,6 +26,17 @@ export default function AdminSettings() {
   const overlayValue = overlayInput === null ? savedOverlay : overlayInput;
   const resultsBgUrl = getSiteSetting("results_bg_url");
 
+  const [uploadingBanner, setUploadingBanner] = useState(false);
+  const [bannerSaved, setBannerSaved] = useState(false);
+  const bannerFileInputRef = useRef(null);
+  const [bannerOverlayInput, setBannerOverlayInput] = useState(null);
+  const savedBannerOverlay = Number(getSiteSetting("draw_banner_bg_overlay") ?? 70);
+  const bannerOverlayValue = bannerOverlayInput === null ? savedBannerOverlay : bannerOverlayInput;
+  const bannerBgUrl = getSiteSetting("draw_banner_bg_url");
+  const [bannerColorInput, setBannerColorInput] = useState(null);
+  const savedBannerColor = getSiteSetting("draw_banner_bg_color") || "#0E1512";
+  const bannerColorValue = bannerColorInput === null ? savedBannerColor : bannerColorInput;
+
   async function handleLogoUpload(e) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -32,11 +44,11 @@ export default function AdminSettings() {
     setError("");
     setSaved(false);
     try {
-      const ext = file.name.split(".").pop();
-      const path = `logo.${ext}`;
+      const { blob } = await compressImage(file, { maxDimension: 512, format: "image/png" });
+      const path = `logo.png`;
       const { error: uploadError } = await supabase.storage
         .from("site-assets")
-        .upload(path, file, { upsert: true, cacheControl: "3600" });
+        .upload(path, blob, { upsert: true, cacheControl: "3600", contentType: "image/png" });
       if (uploadError) throw uploadError;
 
       const { data: pub } = supabase.storage.from("site-assets").getPublicUrl(path);
@@ -97,11 +109,11 @@ export default function AdminSettings() {
     setError("");
     setBgSaved(false);
     try {
-      const ext = file.name.split(".").pop();
-      const path = `results-bg.${ext}`;
+      const { blob, format } = await compressImage(file, { maxDimension: 800, quality: 0.78 });
+      const path = format === "image/webp" ? "results-bg.webp" : "results-bg.jpg";
       const { error: uploadError } = await supabase.storage
         .from("site-assets")
-        .upload(path, file, { upsert: true, cacheControl: "3600" });
+        .upload(path, blob, { upsert: true, cacheControl: "3600", contentType: format });
       if (uploadError) throw uploadError;
 
       const { data: pub } = supabase.storage.from("site-assets").getPublicUrl(path);
@@ -146,6 +158,76 @@ export default function AdminSettings() {
       return;
     }
     setSiteSetting("results_bg_overlay", String(value));
+  }
+
+  async function handleBannerUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingBanner(true);
+    setError("");
+    setBannerSaved(false);
+    try {
+      const { blob, format } = await compressImage(file, { maxDimension: 1600, quality: 0.8 });
+      const path = format === "image/webp" ? "draw-banner-bg.webp" : "draw-banner-bg.jpg";
+      const { error: uploadError } = await supabase.storage
+        .from("site-assets")
+        .upload(path, blob, { upsert: true, cacheControl: "3600", contentType: format });
+      if (uploadError) throw uploadError;
+
+      const { data: pub } = supabase.storage.from("site-assets").getPublicUrl(path);
+      const bustedUrl = `${pub.publicUrl}?t=${Date.now()}`;
+
+      const { error: settingError } = await supabase
+        .from("site_settings")
+        .upsert({ key: "draw_banner_bg_url", value: bustedUrl }, { onConflict: "key" });
+      if (settingError) throw settingError;
+
+      setSiteSetting("draw_banner_bg_url", bustedUrl);
+      setBannerSaved(true);
+    } catch (e) {
+      setError(e.message || String(e));
+    } finally {
+      setUploadingBanner(false);
+      if (bannerFileInputRef.current) bannerFileInputRef.current.value = "";
+    }
+  }
+
+  async function removeBannerPhoto() {
+    setUploadingBanner(true);
+    setError("");
+    const { error: settingError } = await supabase
+      .from("site_settings")
+      .upsert({ key: "draw_banner_bg_url", value: null }, { onConflict: "key" });
+    setUploadingBanner(false);
+    if (settingError) {
+      setError(settingError.message);
+      return;
+    }
+    setSiteSetting("draw_banner_bg_url", null);
+  }
+
+  async function saveBannerOverlay(value) {
+    setBannerOverlayInput(value);
+    const { error: settingError } = await supabase
+      .from("site_settings")
+      .upsert({ key: "draw_banner_bg_overlay", value: String(value) }, { onConflict: "key" });
+    if (settingError) {
+      setError(settingError.message);
+      return;
+    }
+    setSiteSetting("draw_banner_bg_overlay", String(value));
+  }
+
+  async function saveBannerColor(value) {
+    setBannerColorInput(value);
+    const { error: settingError } = await supabase
+      .from("site_settings")
+      .upsert({ key: "draw_banner_bg_color", value }, { onConflict: "key" });
+    if (settingError) {
+      setError(settingError.message);
+      return;
+    }
+    setSiteSetting("draw_banner_bg_color", value);
   }
 
   return (
@@ -276,6 +358,87 @@ export default function AdminSettings() {
         )}
 
         {bgSaved && <p style={{ color: "#0B5C4A", fontSize: 13, marginTop: 8 }}>Background updated.</p>}
+      </div>
+
+      <div className="ov-card" style={{ marginBottom: 20 }}>
+        <strong style={{ fontSize: 13 }}>Winning-numbers banner</strong>
+        <p style={{ fontSize: 12, color: "#5A6560", margin: "4px 0 12px" }}>
+          The dark banner showing winning numbers on the storefront. Pick a solid color, or upload a photo instead
+          — whichever's set last takes effect (uploading a photo overrides the color; removing the photo falls
+          back to the color).
+        </p>
+
+        <div style={{ display: "flex", gap: 8, alignItems: "flex-end", marginBottom: 16 }}>
+          <label>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "#5A6560" }}>Solid color</span>
+            <input
+              type="color"
+              value={bannerColorValue}
+              onChange={(e) => saveBannerColor(e.target.value)}
+              style={{ display: "block", width: 60, height: 40, marginTop: 6, border: "1px solid #DDE3E0", borderRadius: 8, cursor: "pointer" }}
+            />
+          </label>
+        </div>
+
+        <p style={{ fontSize: 12, color: "#8FA69D", margin: "0 0 12px" }}>
+          Photo option — suggested size: 1600×600px or larger, landscape, under 2MB.
+        </p>
+
+        {bannerBgUrl && (
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 360,
+              height: 100,
+              borderRadius: 10,
+              marginBottom: 12,
+              backgroundImage: `linear-gradient(rgba(14,21,18,${bannerOverlayValue / 100}), rgba(14,21,18,${bannerOverlayValue / 100})), url(${bannerBgUrl})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              border: "1px solid #E7EBE9",
+            }}
+          />
+        )}
+
+        <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+          <button className="ov-btn-sm" onClick={() => bannerFileInputRef.current?.click()} disabled={uploadingBanner}>
+            {uploadingBanner ? "Uploading…" : bannerBgUrl ? "Replace photo" : "Upload photo"}
+          </button>
+          {bannerBgUrl && (
+            <button className="ov-btn-sm danger" onClick={removeBannerPhoto} disabled={uploadingBanner}>
+              Remove photo
+            </button>
+          )}
+          <input
+            ref={bannerFileInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: "none" }}
+            onChange={handleBannerUpload}
+          />
+        </div>
+
+        {bannerBgUrl && (
+          <label style={{ display: "block", maxWidth: 360 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "#5A6560" }}>
+              Overlay strength — higher darkens the photo more, so light text stays readable ({bannerOverlayValue}%)
+            </span>
+            <input
+              type="range"
+              min="30"
+              max="95"
+              step="1"
+              value={bannerOverlayValue}
+              onChange={(e) => setBannerOverlayInput(Number(e.target.value))}
+              onMouseUp={(e) => saveBannerOverlay(Number(e.target.value))}
+              onTouchEnd={(e) => saveBannerOverlay(Number(e.target.value))}
+              onKeyUp={(e) => saveBannerOverlay(Number(e.target.value))}
+              style={{ width: "100%", marginTop: 8 }}
+            />
+          </label>
+        )}
+
+        {bannerSaved && <p style={{ color: "#0B5C4A", fontSize: 13, marginTop: 8 }}>Banner background updated.</p>}
       </div>
 
       <div className="ov-card">

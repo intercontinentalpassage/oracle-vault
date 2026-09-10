@@ -1,11 +1,24 @@
 import { useState } from "react";
 import { t } from "../lib/i18n";
+import { getSiteSetting, useSiteSettingsVersion } from "../lib/siteSettingsStore";
 
 const EXPAND_THRESHOLD = 10;
 
 export default function DrawBanner({ lang, draw }) {
   const [showAll, setShowAll] = useState(false);
   const [expandedTiers, setExpandedTiers] = useState(new Set());
+  useSiteSettingsVersion();
+
+  const bannerBgUrl = getSiteSetting("draw_banner_bg_url");
+  const bannerBgColor = getSiteSetting("draw_banner_bg_color") || "#0E1512";
+  const bannerBgOverlay = Number(getSiteSetting("draw_banner_bg_overlay") ?? 70);
+  const bannerStyle = bannerBgUrl
+    ? {
+        backgroundImage: `linear-gradient(rgba(14,21,18,${bannerBgOverlay / 100}), rgba(14,21,18,${bannerBgOverlay / 100})), url(${bannerBgUrl})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }
+    : { background: bannerBgColor };
 
   if (!draw) {
     return <div className="ov-draw-empty">{t(lang, "noDrawPublished")}</div>;
@@ -24,7 +37,7 @@ export default function DrawBanner({ lang, draw }) {
   }
 
   return (
-    <div className="ov-draw-banner">
+    <div className="ov-draw-banner" style={bannerStyle}>
       <div className="ov-draw-top">
         <div>
           <div className="ov-draw-label">

@@ -5,21 +5,25 @@ import { getCurrencySymbol, useSiteSettingsVersion } from "../../lib/siteSetting
 
 export default function AgentSales() {
   useSiteSettingsVersion();
-  const currency = getCurrencySymbol();
   const { agentId } = useOutletContext();
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [agentCurrency, setAgentCurrency] = useState(null);
+  const currency = agentCurrency || getCurrencySymbol();
 
   useEffect(() => {
-    supabase
-      .from("sales")
-      .select("*, tickets(number)")
-      .eq("agent_id", agentId)
-      .order("sold_at", { ascending: false })
-      .then(({ data }) => {
-        setSales(data || []);
-        setLoading(false);
-      });
+    Promise.all([
+      supabase
+        .from("sales")
+        .select("*, tickets(number)")
+        .eq("agent_id", agentId)
+        .order("sold_at", { ascending: false }),
+      supabase.from("agents").select("currency_symbol").eq("id", agentId).single(),
+    ]).then(([salesRes, agentRes]) => {
+      setSales(salesRes.data || []);
+      setAgentCurrency(agentRes.data?.currency_symbol || null);
+      setLoading(false);
+    });
   }, [agentId]);
 
   const total = sales.reduce((sum, s) => sum + (Number(s.price) || 0), 0);

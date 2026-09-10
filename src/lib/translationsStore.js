@@ -13,10 +13,6 @@ export function isKeyLocked(key) {
   return !!locks[key];
 }
 
-export function isLoaded() {
-  return overrides !== null;
-}
-
 export function subscribe(fn) {
   listeners.add(fn);
   return () => listeners.delete(fn);

@@ -26,6 +26,7 @@ export default function AdminTickets() {
   const [showNewDraw, setShowNewDraw] = useState(false);
 
   const [selected, setSelected] = useState(new Set());
+  const [priceEdits, setPriceEdits] = useState({});
   const [batchAgentId, setBatchAgentId] = useState("");
   const [batching, setBatching] = useState(false);
 
@@ -103,6 +104,17 @@ export default function AdminTickets() {
       return;
     }
     load();
+  }
+
+  async function savePrice(id) {
+    const value = priceEdits[id];
+    if (value === undefined) return;
+    await updateTicket(id, { price: Number(value) || 0 });
+    setPriceEdits((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
   }
 
   async function deleteTicket(id) {
@@ -390,7 +402,22 @@ export default function AdminTickets() {
                 </td>
                 <td style={{ fontFamily: "'Space Mono', monospace" }}>{tk.number}</td>
                 <td>{groups.find((g) => g.key === tk.group_key)?.label || tk.group_key}</td>
-                <td>{currency}{Number(tk.price || 0).toLocaleString()}</td>
+                <td>
+                  <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                    <input
+                      className="ov-input"
+                      type="number"
+                      style={{ margin: 0, padding: "6px 8px", fontSize: 12, width: 80 }}
+                      value={priceEdits[tk.id] ?? tk.price ?? 0}
+                      onChange={(e) => setPriceEdits((prev) => ({ ...prev, [tk.id]: e.target.value }))}
+                    />
+                    {priceEdits[tk.id] !== undefined && (
+                      <button className="ov-btn-sm primary" onClick={() => savePrice(tk.id)}>
+                        Save
+                      </button>
+                    )}
+                  </div>
+                </td>
                 <td>
                   <select
                     className="ov-input"

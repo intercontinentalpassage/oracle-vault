@@ -10,6 +10,7 @@ import TicketResults from "../components/TicketResults";
 import CartDrawer from "../components/CartDrawer";
 import WinnerChecker from "../components/WinnerChecker";
 import BrandBadge from "../components/BrandBadge";
+import { matchesDigits } from "../lib/ticketMatch";
 
 export default function Storefront() {
   const [lang, setLang] = useLang();
@@ -30,8 +31,8 @@ export default function Storefront() {
       setLoading(true);
       setLoadError("");
       try {
-        const [ticketsRes, groupsRes, resultsDrawRes] = await Promise.all([
-          supabase.from("tickets").select("*").order("number"),
+        const [ticketsRes, groupsRes, resultsDrawRes, allDrawsRes] = await Promise.all([
+          supabase.from("tickets").select("*").is("agent_id", null).order("number"),
           supabase.from("groups").select("*").order("sort_order"),
           supabase
             .from("draws")
@@ -40,6 +41,7 @@ export default function Storefront() {
             .order("draw_date", { ascending: false })
             .limit(1)
             .maybeSingle(),
+          supabase.from("draws").select("*"),
         ]);
         if (ticketsRes.error) throw ticketsRes.error;
         if (groupsRes.error) throw groupsRes.error;
@@ -55,28 +57,23 @@ export default function Storefront() {
         // not from published results — those are for a draw that already
         // happened. Tickets tied to a draw whose date has already passed
         // are treated as expired and hidden from the storefront entirely.
-        const drawIds = [...new Set(ticketsData.filter((tk) => tk.status === "available" && tk.draw_id).map((tk) => tk.draw_id))];
-        let visibleTickets = ticketsData;
-        if (drawIds.length > 0) {
-          const { data: relatedDraws } = await supabase.from("draws").select("*").in("id", drawIds);
-          if (!cancelled) {
-            const today = new Date().toISOString().slice(0, 10);
-            const byId = {};
-            (relatedDraws || []).forEach((d) => (byId[d.id] = d));
-            const upcoming = (relatedDraws || [])
-              .filter((d) => d.draw_date >= today)
-              .sort((a, b) => (a.draw_date < b.draw_date ? -1 : 1));
-            setNextDraw(upcoming[0] || null);
-            visibleTickets = ticketsData.filter((tk) => {
-              if (!tk.draw_id) return true;
-              const d = byId[tk.draw_id];
-              return !d || d.draw_date >= today;
-            });
-          }
-        } else if (!cancelled) {
-          setNextDraw(null);
-        }
-        if (cancelled) return;
+        // All draws were already fetched above in the same batch, so this
+        // is computed locally — no extra network round-trip.
+        const today = new Date().toISOString().slice(0, 10);
+        const byId = {};
+        (allDrawsRes.data || []).forEach((d) => (byId[d.id] = d));
+        const referencedDrawIds = new Set(
+          ticketsData.filter((tk) => tk.status === "available" && tk.draw_id).map((tk) => tk.draw_id)
+        );
+        const upcoming = (allDrawsRes.data || [])
+          .filter((d) => referencedDrawIds.has(d.id) && d.draw_date >= today)
+          .sort((a, b) => (a.draw_date < b.draw_date ? -1 : 1));
+        setNextDraw(upcoming[0] || null);
+        const visibleTickets = ticketsData.filter((tk) => {
+          if (!tk.draw_id) return true;
+          const d = byId[tk.draw_id];
+          return !d || d.draw_date >= today;
+        });
         setTickets(visibleTickets);
         const maxLen = Math.max(4, ...visibleTickets.map((tk) => tk.number.length));
         setDigits(Array(maxLen).fill(""));
@@ -97,8 +94,8 @@ export default function Storefront() {
   const matchCount = useMemo(() => {
     const filled = digits.filter(Boolean).length;
     if (!filled) return null;
-    return tickets.filter((tk) => tk.status === "available").length;
-  }, [tickets, digits]);
+    return tickets.filter((tk) => tk.status === "available" && matchesDigits(tk.number, digits, anywhere)).length;
+  }, [tickets, digits, anywhere]);
   const resultSummary = digits.filter(Boolean).length
     ? `${matchCount} match${matchCount === 1 ? "" : "es"}`
     : "All tickets shown";

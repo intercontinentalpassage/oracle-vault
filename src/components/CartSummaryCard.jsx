@@ -3,12 +3,12 @@ import { toPng } from "html-to-image";
 import { t } from "../lib/i18n";
 import { getCurrencySymbol, useSiteSettingsVersion } from "../lib/siteSettingsStore";
 
-export default function CartSummaryCard({ lang, cart, total, phone, name, onClose }) {
+export default function CartSummaryCard({ lang, cart, total, phone, name, onClose, currencyOverride }) {
   const cardRef = useRef(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   useSiteSettingsVersion();
-  const currency = getCurrencySymbol();
+  const currency = currencyOverride || getCurrencySymbol();
 
   async function saveAsPhoto() {
     if (!cardRef.current) return;

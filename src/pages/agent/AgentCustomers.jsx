@@ -5,29 +5,33 @@ import { getCurrencySymbol, useSiteSettingsVersion } from "../../lib/siteSetting
 
 export default function AgentCustomers() {
   useSiteSettingsVersion();
-  const currency = getCurrencySymbol();
   const { agentId } = useOutletContext();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [agentCurrency, setAgentCurrency] = useState(null);
+  const currency = agentCurrency || getCurrencySymbol();
 
   useEffect(() => {
-    supabase
-      .from("sales")
-      .select("customer_phone, price, sold_at")
-      .eq("agent_id", agentId)
-      .order("sold_at", { ascending: false })
-      .then(({ data }) => {
-        const byPhone = {};
-        (data || []).forEach((s) => {
-          if (!byPhone[s.customer_phone]) {
-            byPhone[s.customer_phone] = { phone: s.customer_phone, count: 0, total: 0, lastSale: s.sold_at };
-          }
-          byPhone[s.customer_phone].count += 1;
-          byPhone[s.customer_phone].total += Number(s.price) || 0;
-        });
-        setRows(Object.values(byPhone));
-        setLoading(false);
+    Promise.all([
+      supabase
+        .from("sales")
+        .select("customer_phone, price, sold_at")
+        .eq("agent_id", agentId)
+        .order("sold_at", { ascending: false }),
+      supabase.from("agents").select("currency_symbol").eq("id", agentId).single(),
+    ]).then(([salesRes, agentRes]) => {
+      const byPhone = {};
+      (salesRes.data || []).forEach((s) => {
+        if (!byPhone[s.customer_phone]) {
+          byPhone[s.customer_phone] = { phone: s.customer_phone, count: 0, total: 0, lastSale: s.sold_at };
+        }
+        byPhone[s.customer_phone].count += 1;
+        byPhone[s.customer_phone].total += Number(s.price) || 0;
       });
+      setRows(Object.values(byPhone));
+      setAgentCurrency(agentRes.data?.currency_symbol || null);
+      setLoading(false);
+    });
   }, [agentId]);
 
   return (

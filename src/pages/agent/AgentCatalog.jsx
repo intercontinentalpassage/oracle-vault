@@ -1,24 +1,28 @@
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
+import { getCurrencySymbol } from "../../lib/siteSettingsStore";
 
 export default function AgentCatalog() {
   const { agentId } = useOutletContext();
   const [tickets, setTickets] = useState([]);
   const [groups, setGroups] = useState([]);
+  const [agentCurrency, setAgentCurrency] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState({});
 
   async function load() {
     setLoading(true);
-    const [ticketsRes, groupsRes] = await Promise.all([
+    const [ticketsRes, groupsRes, agentRes] = await Promise.all([
       supabase.from("tickets").select("*").eq("agent_id", agentId).order("number"),
       supabase.from("groups").select("*").order("sort_order"),
+      supabase.from("agents").select("currency_symbol").eq("id", agentId).single(),
     ]);
     if (ticketsRes.error) setError(ticketsRes.error.message);
     setTickets(ticketsRes.data || []);
     setGroups(groupsRes.data || []);
+    setAgentCurrency(agentRes.data?.currency_symbol || null);
     setLoading(false);
   }
 
@@ -62,7 +66,7 @@ export default function AgentCatalog() {
               <th>Number</th>
               <th>Group</th>
               <th>Status</th>
-              <th>Price</th>
+              <th>Price ({agentCurrency || getCurrencySymbol()})</th>
               <th></th>
             </tr>
           </thead>
