@@ -12,6 +12,7 @@ export default function AdminTickets() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [search, setSearch] = useState("");
 
   const [bulkNumbers, setBulkNumbers] = useState("");
   const [bulkGroup, setBulkGroup] = useState("single");
@@ -179,9 +180,10 @@ export default function AdminTickets() {
   }
 
   const filtered =
-    statusFilter === "archived"
+    (statusFilter === "archived"
       ? tickets.filter(isExpired)
-      : (statusFilter ? tickets.filter((t) => t.status === statusFilter) : tickets).filter((t) => !isExpired(t));
+      : (statusFilter ? tickets.filter((t) => t.status === statusFilter) : tickets).filter((t) => !isExpired(t))
+    ).filter((t) => !search.trim() || t.number.includes(search.trim()));
 
   const allFilteredSelected = filtered.length > 0 && filtered.every((tk) => selected.has(tk.id));
   function toggleSelectAll() {
@@ -328,13 +330,23 @@ export default function AdminTickets() {
       {error && <p style={{ color: "#B23A2E", fontSize: 13, marginBottom: 12 }}>{error}</p>}
 
       <div className="ov-toolbar">
-        <select className="ov-input" style={{ width: 180, marginTop: 0 }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-          <option value="">All statuses</option>
-          <option value="available">Available</option>
-          <option value="held">Held</option>
-          <option value="sold">Sold</option>
-          <option value="archived">Archived (past draw date)</option>
-        </select>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <select className="ov-input" style={{ width: 180, marginTop: 0 }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <option value="">All statuses</option>
+            <option value="available">Available</option>
+            <option value="held">Held</option>
+            <option value="sold">Sold</option>
+            <option value="archived">Archived (past draw date)</option>
+          </select>
+          <input
+            className="ov-input"
+            style={{ width: 180, marginTop: 0 }}
+            placeholder="Search ticket number…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value.replace(/\D/g, ""))}
+            inputMode="numeric"
+          />
+        </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           {selected.size > 0 && (
             <button className="ov-btn-sm danger" onClick={deleteSelected}>
@@ -364,6 +376,13 @@ export default function AdminTickets() {
             </tr>
           </thead>
           <tbody>
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={8} style={{ textAlign: "center", color: "#5A6560", padding: "40px 12px" }}>
+                  No tickets match your search/filter.
+                </td>
+              </tr>
+            )}
             {filtered.map((tk) => (
               <tr key={tk.id}>
                 <td>

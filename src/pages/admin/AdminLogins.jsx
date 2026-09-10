@@ -16,12 +16,27 @@ async function callAdminAccounts(payload) {
   return json;
 }
 
+function slugifyName(name) {
+  return (name || "agent")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "") || "agent";
+}
+
+function generatePlaceholderEmail(displayName) {
+  const slug = slugifyName(displayName);
+  const suffix = Math.random().toString(36).slice(2, 8);
+  return `${slug}-${suffix}@oraclevault.local`;
+}
+
 export default function AdminLogins() {
   const [profiles, setProfiles] = useState([]);
   const [agents, setAgents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [noticeGeneratedEmail, setNoticeGeneratedEmail] = useState(null);
 
   // Create-login form
   const [email, setEmail] = useState("");
@@ -61,20 +76,28 @@ export default function AdminLogins() {
   }
 
   async function createLogin() {
-    if (!email.trim() || !password.trim()) return;
+    if (!password.trim()) return;
     setCreating(true);
     setError("");
     setNotice("");
+    setNoticeGeneratedEmail(null);
+    const wasBlank = !email.trim();
+    const finalEmail = email.trim() || generatePlaceholderEmail(displayName);
     try {
       await callAdminAccounts({
         action: "create_login",
-        email: email.trim(),
+        email: finalEmail,
         password,
         display_name: displayName.trim() || null,
         role,
         agent_id: role === "agent" ? agentId || null : null,
       });
-      setNotice(`Login created for ${email.trim()}.`);
+      if (wasBlank) {
+        setNoticeGeneratedEmail(finalEmail);
+        setNotice("");
+      } else {
+        setNotice(`Login created for ${finalEmail}.`);
+      }
       setEmail("");
       setPassword("");
       setDisplayName("");
@@ -95,6 +118,7 @@ export default function AdminLogins() {
     setResetting(true);
     setError("");
     setNotice("");
+    setNoticeGeneratedEmail(null);
     try {
       await callAdminAccounts({ action: "reset_password", user_id: resetTarget.id, new_password: resetValue.trim() });
       setNotice(`Password reset for ${resetTarget.display_name || resetTarget.id}.`);
@@ -115,8 +139,8 @@ export default function AdminLogins() {
         <strong style={{ fontSize: 13 }}>Create a login</strong>
         <div className="ov-form-row" style={{ marginTop: 10 }}>
           <label>
-            Email
-            <input className="ov-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            Email <span style={{ color: "#5A6560", fontWeight: 400 }}>(optional)</span>
+            <input className="ov-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Leave blank to auto-generate" />
           </label>
           <label>
             Password
@@ -149,13 +173,24 @@ export default function AdminLogins() {
             </label>
           )}
         </div>
-        <button className="ov-btn-sm primary" onClick={createLogin} disabled={creating || !email.trim() || !password.trim()}>
+        <button className="ov-btn-sm primary" onClick={createLogin} disabled={creating || !password.trim()}>
           {creating ? "Creating…" : "Create login"}
         </button>
       </div>
 
       {error && <p style={{ color: "#B23A2E", fontSize: 13, marginBottom: 12 }}>{error}</p>}
-      {notice && <p style={{ color: "#0B5C4A", fontSize: 13, marginBottom: 12 }}>{notice}</p>}
+      {(notice || noticeGeneratedEmail) && (
+        <p style={{ color: "#0B5C4A", fontSize: 13, marginBottom: 12 }}>
+          {noticeGeneratedEmail ? (
+            <>
+              Login created. No email was given, so this login email was generated — save it, the agent will need it
+              to sign in: <code style={{ background: "#E6F4EF", padding: "2px 6px", borderRadius: 6 }}>{noticeGeneratedEmail}</code>
+            </>
+          ) : (
+            notice
+          )}
+        </p>
+      )}
 
       {loading ? (
         <p style={{ color: "#5A6560" }}>Loading…</p>

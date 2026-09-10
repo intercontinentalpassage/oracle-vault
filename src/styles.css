@@ -384,7 +384,7 @@ button, select, input { font-family: inherit; }
 .ov-admin-content { flex: 1; padding: 28px clamp(20px, 3vw, 40px); max-width: 1200px; min-width: 0; }
 .ov-admin-content h1 { font-size: 22px; margin: 0 0 20px; font-weight: 700; letter-spacing: -0.01em; }
 
-.ov-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.ov-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; min-height: 240px; }
 .ov-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .ov-table th { text-align: left; padding: 10px 12px; color: #5A6560; font-weight: 600; border-bottom: 1px solid #E7EBE9; white-space: nowrap; }
 .ov-table td { padding: 10px 12px; border-bottom: 1px solid #F0F3F1; vertical-align: middle; }
