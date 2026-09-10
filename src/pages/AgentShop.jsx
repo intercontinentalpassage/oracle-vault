@@ -8,7 +8,8 @@ import DigitSearch from "../components/DigitSearch";
 import DrawBanner from "../components/DrawBanner";
 import TicketResults from "../components/TicketResults";
 import CartDrawer from "../components/CartDrawer";
-import FloralBackground from "../components/FloralBackground";
+import WinnerChecker from "../components/WinnerChecker";
+import BrandBadge from "../components/BrandBadge";
 
 export default function AgentShop() {
   const { slug } = useParams();
@@ -98,7 +99,7 @@ export default function AgentShop() {
     <div className="ov-page">
       <header className="ov-header">
         <div className="ov-brand">
-          <div className="ov-brand-badge">88</div>
+          <BrandBadge />
           <div>
             <div className="ov-brand-name">{t(lang, "shopPossessive", { name: agent.name })}</div>
             <div style={{ fontSize: 11, color: "#5A6560" }}>{t(lang, "viaOracleVault")}</div>
@@ -117,7 +118,7 @@ export default function AgentShop() {
       </header>
 
       <section className="ov-hero-section" id="top">
-        <FloralBackground />        <div className="ov-hero-inner">
+        <div className="ov-hero-inner">
           <div className="ov-hero-grid">
             <div className="ov-hero" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div className="ov-next-draw-pill">
@@ -169,6 +170,7 @@ export default function AgentShop() {
       )}
 
       <CartDrawer lang={lang} open={cartOpen} onClose={() => setCartOpen(false)} agentId={agent.id} />
+      <WinnerChecker />
     </div>
   );
 }

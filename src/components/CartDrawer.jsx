@@ -2,6 +2,7 @@ import { useState } from "react";
 import { t } from "../lib/i18n";
 import { useCart } from "../lib/CartContext";
 import { supabase } from "../lib/supabaseClient";
+import CartSummaryCard from "./CartSummaryCard";
 
 export default function CartDrawer({ lang, open, onClose, agentId }) {
   const { cart, remove, clear } = useCart();
@@ -10,6 +11,7 @@ export default function CartDrawer({ lang, open, onClose, agentId }) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
 
   if (!open) return null;
 
@@ -102,6 +104,14 @@ export default function CartDrawer({ lang, open, onClose, agentId }) {
               <span style={{ fontFamily: "'Space Mono', monospace" }}>฿{total.toLocaleString()}</span>
             </div>
 
+            <button
+              className="ov-link-btn"
+              style={{ marginTop: 8, alignSelf: "flex-start", color: "#0F7A63", fontWeight: 700 }}
+              onClick={() => setShowSummary(true)}
+            >
+              View summary
+            </button>
+
             <div style={{ marginTop: 16 }}>
               <label style={{ fontSize: 13, fontWeight: 600 }}>
                 {t(lang, "placeholderPhone")}
@@ -133,6 +143,17 @@ export default function CartDrawer({ lang, open, onClose, agentId }) {
               </button>
             </div>
           </>
+        )}
+
+        {showSummary && (
+          <CartSummaryCard
+            lang={lang}
+            cart={cart}
+            total={total}
+            phone={phone}
+            name={name}
+            onClose={() => setShowSummary(false)}
+          />
         )}
       </div>
     </div>

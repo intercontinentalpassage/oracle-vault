@@ -1,6 +1,7 @@
 import { NavLink, Navigate, Outlet, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { useSessionProfile } from "../../lib/useSessionProfile";
+import BrandBadge from "../../components/BrandBadge";
 
 const NAV = [
   { to: "/agent/catalog", label: "My catalog" },
@@ -34,7 +35,7 @@ export default function AgentLayout() {
     <div className="ov-admin-shell">
       <aside className="ov-admin-sidebar">
         <div className="ov-admin-brand">
-          Oracle Vault <span>Agent</span>
+          <BrandBadge size={24} /> Oracle Vault <span>Agent</span>
         </div>
         <a href="#/" className="ov-admin-nav-link back">
           ← Storefront

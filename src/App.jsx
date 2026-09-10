@@ -7,12 +7,14 @@ import Login from "./pages/Login";
 
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminTickets from "./pages/admin/AdminTickets";
+import AdminGroups from "./pages/admin/AdminGroups";
 import AdminPurchaseRequests from "./pages/admin/AdminPurchaseRequests";
 import AdminAgents from "./pages/admin/AdminAgents";
 import AdminCustomers from "./pages/admin/AdminCustomers";
 import AdminRefunds from "./pages/admin/AdminRefunds";
 import AdminLogins from "./pages/admin/AdminLogins";
 import AdminDraws from "./pages/admin/AdminDraws";
+import AdminTranslations from "./pages/admin/AdminTranslations";
 import AdminSettings from "./pages/admin/AdminSettings";
 
 import AgentLayout from "./pages/agent/AgentLayout";
@@ -35,12 +37,14 @@ export default function App() {
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<Navigate to="tickets" replace />} />
             <Route path="tickets" element={<AdminTickets />} />
+            <Route path="groups" element={<AdminGroups />} />
             <Route path="purchase-requests" element={<AdminPurchaseRequests />} />
             <Route path="agents" element={<AdminAgents />} />
             <Route path="customers" element={<AdminCustomers />} />
             <Route path="refunds" element={<AdminRefunds />} />
             <Route path="logins" element={<AdminLogins />} />
             <Route path="draws" element={<AdminDraws />} />
+            <Route path="translations" element={<AdminTranslations />} />
             <Route path="settings" element={<AdminSettings />} />
           </Route>
 

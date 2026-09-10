@@ -110,8 +110,12 @@ button, select, input { font-family: inherit; }
 .ov-lang-menu-item.selected { background: #E6F4EF; color: #0B5C4A; }
 
 /* Hero */
-.ov-hero-section { position: relative; padding: clamp(26px, 4vw, 56px) clamp(14px, 4vw, 48px); overflow: hidden; }
-.ov-floral-bg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+.ov-hero-section {
+  position: relative; padding: clamp(26px, 4vw, 56px) clamp(14px, 4vw, 48px); overflow: hidden;
+  background-image: linear-gradient(rgba(255,255,255,0.86), rgba(255,255,255,0.93)), url('/images/bangkok-hero.jpg');
+  background-size: cover;
+  background-position: center 70%;
+}
 .ov-hero-inner { position: relative; z-index: 1; max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 26px; }
 .ov-hero-grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); align-items: end; }
 .ov-next-draw-pill {
@@ -154,6 +158,7 @@ button, select, input { font-family: inherit; }
   border: 2px solid #DDE7E3;
   border-radius: 14px;
   outline: none;
+  caret-color: transparent;
   padding: 0;
 }
 .ov-digit-input:focus { border-color: #0F7A63; }
@@ -186,10 +191,14 @@ button, select, input { font-family: inherit; }
 .ov-draw-tier { padding: 16px clamp(18px, 3vw, 28px); border-right: 1px solid #222E29; border-bottom: 1px solid #222E29; display: flex; flex-direction: column; gap: 6px; }
 .ov-draw-tier-label { font-size: 12px; font-weight: 600; color: #8FA69D; }
 .ov-draw-tier-numbers { font-family: 'Space Mono', monospace; font-size: 14px; font-weight: 700; line-height: 1.5; }
+.ov-draw-tier-expand {
+  font-family: inherit; font-size: 12px; font-weight: 600; color: #8FA69D;
+  background: none; border: none; padding: 4px 0; cursor: pointer; text-decoration: underline;
+}
 .ov-draw-empty { padding: 22px clamp(18px, 3vw, 28px); border-radius: 20px; background: #F4F8F6; color: #5A6560; border: 1px solid #E1EAE6; }
 
 /* Results */
-.ov-results { padding: 0 clamp(14px, 4vw, 48px) 80px; }
+.ov-results { padding: 32px clamp(14px, 4vw, 48px) 80px; }
 .ov-results-inner { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px; }
 .ov-results-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .ov-results-head h2 { margin: 0; font-size: clamp(21px, 2.4vw, 28px); font-weight: 700; letter-spacing: -0.02em; }
@@ -228,7 +237,6 @@ button, select, input { font-family: inherit; }
   font-family: 'Space Mono', monospace; font-size: clamp(15px, 2vw, 19px); font-weight: 700;
   border-radius: 8px; background: #F4F8F6; color: #0E1512;
 }
-.ov-ticket-digit.in-cart { background: #0F7A63; color: #FFFFFF; }
 .ov-add-btn-sm {
   flex: 0 0 auto;
   width: 32px; height: 32px;
@@ -256,8 +264,15 @@ button, select, input { font-family: inherit; }
   padding: 14px 20px; font-weight: 700; cursor: pointer;
   box-shadow: 0 6px 20px rgba(15,122,99,0.35); z-index: 20;
 }
+.ov-winner-fab {
+  position: fixed; bottom: 20px; left: 20px;
+  width: 52px; height: 52px;
+  background: #0E1512; color: #fff; border: none; border-radius: 999px;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  box-shadow: 0 6px 20px rgba(14,21,18,0.3); z-index: 20;
+}
 .ov-cart-overlay { position: fixed; inset: 0; background: rgba(14,21,18,.4); display: flex; justify-content: flex-end; z-index: 50; }
-.ov-cart-panel { width: min(400px, 100%); height: 100%; background: #FFFFFF; padding: 20px; display: flex; flex-direction: column; overflow-y: auto; }
+.ov-cart-panel { width: min(400px, 100%); height: 100%; background: #FFFFFF; padding: 20px; display: flex; flex-direction: column; overflow-y: auto; position: relative; }
 .ov-cart-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #F0F3F1; }
 .ov-input {
   width: 100%; padding: 12px 14px; border: 1.5px solid #DDE3E0; border-radius: 10px;
@@ -324,3 +339,25 @@ button, select, input { font-family: inherit; }
 .ov-form-row label { flex: 1 1 160px; font-size: 12px; font-weight: 600; color: #5A6560; }
 .ov-form-row .ov-input { margin-top: 4px; }
 .ov-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+
+/* Cart summary floating card — centered within the cart drawer's own
+   bounds, not the full page, so it reads as part of the cart flow. */
+.ov-summary-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(14,21,18,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+  padding: 20px;
+}
+.ov-summary-wrap { width: 100%; max-width: 320px; }
+.ov-summary-card {
+  background: #FFFFFF;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 12px 32px rgba(14,21,18,0.18);
+}
+.ov-summary-header { display: flex; align-items: center; gap: 10px; }
+.ov-summary-divider { height: 1px; background: #EEF1EF; margin: 14px 0; }

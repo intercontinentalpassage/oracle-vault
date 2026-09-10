@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
+import ChangePassword from "../../components/ChangePassword";
 
 export default function AgentSettings() {
   const { agentId } = useOutletContext();
@@ -131,6 +132,8 @@ export default function AgentSettings() {
           {saving ? "Saving…" : "Save name/phone"}
         </button>
       </div>
+
+      <ChangePassword />
     </div>
   );
 }

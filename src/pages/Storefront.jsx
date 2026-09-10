@@ -8,7 +8,8 @@ import DigitSearch from "../components/DigitSearch";
 import DrawBanner from "../components/DrawBanner";
 import TicketResults from "../components/TicketResults";
 import CartDrawer from "../components/CartDrawer";
-import FloralBackground from "../components/FloralBackground";
+import WinnerChecker from "../components/WinnerChecker";
+import BrandBadge from "../components/BrandBadge";
 
 export default function Storefront() {
   const [lang, setLang] = useLang();
@@ -95,7 +96,7 @@ export default function Storefront() {
     <div className="ov-page">
       <header className="ov-header">
         <div className="ov-brand">
-          <div className="ov-brand-badge">88</div>
+          <BrandBadge />
           <div className="ov-brand-name">Oracle Vault</div>
         </div>
         <LanguageSwitcher lang={lang} onChange={setLang} />
@@ -108,7 +109,7 @@ export default function Storefront() {
       </header>
 
       <section className="ov-hero-section" id="top">
-        <FloralBackground />        <div className="ov-hero-inner">
+        <div className="ov-hero-inner">
           <div className="ov-hero-grid">
             <div className="ov-hero" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div className="ov-next-draw-pill">
@@ -159,6 +160,7 @@ export default function Storefront() {
       )}
 
       <CartDrawer lang={lang} open={cartOpen} onClose={() => setCartOpen(false)} />
+      <WinnerChecker />
     </div>
   );
 }

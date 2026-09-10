@@ -1,15 +1,18 @@
 import { NavLink, Navigate, Outlet, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { useSessionProfile } from "../../lib/useSessionProfile";
+import BrandBadge from "../../components/BrandBadge";
 
 const NAV = [
   { to: "/admin/tickets", label: "Tickets" },
+  { to: "/admin/groups", label: "Ticket categories" },
   { to: "/admin/purchase-requests", label: "Purchase requests" },
   { to: "/admin/agents", label: "Agents" },
   { to: "/admin/customers", label: "Customers" },
   { to: "/admin/refunds", label: "Refund requests" },
   { to: "/admin/logins", label: "All logins" },
   { to: "/admin/draws", label: "Draws" },
+  { to: "/admin/translations", label: "Storefront text" },
   { to: "/admin/settings", label: "Settings" },
 ];
 
@@ -30,7 +33,7 @@ export default function AdminLayout() {
     <div className="ov-admin-shell">
       <aside className="ov-admin-sidebar">
         <div className="ov-admin-brand">
-          Oracle Vault <span>Admin</span>
+          <BrandBadge size={24} /> Oracle Vault <span>Admin</span>
         </div>
         <a href="#/" className="ov-admin-nav-link back">
           ← Storefront

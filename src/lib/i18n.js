@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ensureTranslationsLoaded, getOverride, isKeyLocked, subscribe } from "./translationsStore";
 
 const LANG_KEY = "oracle-vault:lang";
 
@@ -211,7 +212,11 @@ export function setLang(lang) {
 }
 
 export function t(lang, key, vars) {
-  let str = (I18N[lang] && I18N[lang][key]) || I18N.en[key] || key;
+  // A locked key ignores the selected language and always shows the
+  // English text — used for things like a brand name that shouldn't
+  // change no matter what a customer picks.
+  const effectiveLang = isKeyLocked(key) ? "en" : lang;
+  let str = getOverride(effectiveLang, key) || (I18N[effectiveLang] && I18N[effectiveLang][key]) || I18N.en[key] || key;
   if (vars) {
     for (const k in vars) str = str.split(`{${k}}`).join(vars[k]);
   }
@@ -219,10 +224,12 @@ export function t(lang, key, vars) {
 }
 
 // Hook: returns [lang, setLangAndPersist]. Also applies the Myanmar font
-// to <body> whenever Myanmar is selected, and keeps the <html lang> attr
-// in sync for accessibility/screen readers.
+// to <body> whenever Myanmar is selected, keeps the <html lang> attr in
+// sync for accessibility, and loads any admin-edited translation text
+// from the database (once per app load, shared across all components).
 export function useLang() {
   const [lang, setLangState] = useState(getLang);
+  const [, forceRender] = useState(0);
 
   useEffect(() => {
     document.documentElement.lang = lang;
@@ -231,6 +238,12 @@ export function useLang() {
         ? "'Noto Sans Myanmar', Sora, system-ui, sans-serif"
         : "Sora, system-ui, sans-serif";
   }, [lang]);
+
+  useEffect(() => {
+    const unsubscribe = subscribe(() => forceRender((n) => n + 1));
+    ensureTranslationsLoaded();
+    return unsubscribe;
+  }, []);
 
   function changeLang(next) {
     setLang(next);

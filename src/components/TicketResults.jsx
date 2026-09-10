@@ -15,12 +15,10 @@ export default function TicketResults({ lang, tickets, groups, digits, anywhere,
   const [filterKey, setFilterKey] = useState(null);
   const { add, remove, has } = useCart();
 
-  const filters = [
-    { key: null, label: t(lang, "filterAll") },
-    { key: "single", label: t(lang, "filterSingle") },
-    { key: "pair", label: t(lang, "filterPair") },
-    { key: "set", label: t(lang, "filterSet") },
-  ];
+  // Filter chips and group headings are driven entirely by the `groups`
+  // table now, so anything added/renamed in Admin shows up automatically
+  // — no hardcoded Single/Pair/Set list here.
+  const filters = [{ key: null, label: t(lang, "filterAll") }, ...groups.map((g) => ({ key: g.key, label: g.label }))];
 
   const filtered = useMemo(
     () =>
@@ -33,18 +31,9 @@ export default function TicketResults({ lang, tickets, groups, digits, anywhere,
     [tickets, digits, anywhere, filterKey]
   );
 
-  const groupLabel = (key) => {
-    if (key === "single") return t(lang, "filterSingle");
-    if (key === "pair") return t(lang, "badgePair");
-    if (key === "set") return t(lang, "badgeSet");
-    return groups.find((g) => g.key === key)?.label || key;
-  };
-
-  // Group filtered tickets by their group_key, in the groups' sort order.
   const grouped = useMemo(() => {
-    const order = groups.length ? groups.map((g) => g.key) : ["single", "pair", "set"];
-    return order
-      .map((key) => ({ key, label: groupLabel(key), tickets: filtered.filter((tk) => tk.group_key === key) }))
+    return groups
+      .map((g) => ({ key: g.key, label: g.label, tickets: filtered.filter((tk) => tk.group_key === g.key) }))
       .filter((g) => g.tickets.length > 0);
   }, [filtered, groups]);
 
@@ -88,7 +77,7 @@ export default function TicketResults({ lang, tickets, groups, digits, anywhere,
                       <div className="ov-ticket-number-row">
                         <div className="ov-ticket-digits">
                           {tk.number.split("").map((d, i) => (
-                            <div className={`ov-ticket-digit${inCart ? " in-cart" : ""}`} key={i}>
+                            <div className="ov-ticket-digit" key={i}>
                               {d}
                             </div>
                           ))}
