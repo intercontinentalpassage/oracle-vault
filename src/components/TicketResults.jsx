@@ -86,21 +86,24 @@ export default function TicketResults({ lang, tickets, groups, digits, anywhere,
                   return (
                     <div className={`ov-ticket-card${inCart ? " in-cart" : ""}`} key={tk.id}>
                       <div className="ov-ticket-number-row">
-                        {tk.number.split("").map((d, i) => (
-                          <div className={`ov-ticket-digit${inCart ? " in-cart" : ""}`} key={i}>
-                            {d}
-                          </div>
-                        ))}
+                        <div className="ov-ticket-digits">
+                          {tk.number.split("").map((d, i) => (
+                            <div className={`ov-ticket-digit${inCart ? " in-cart" : ""}`} key={i}>
+                              {d}
+                            </div>
+                          ))}
+                        </div>
+                        <button
+                          className={`ov-add-btn-sm${inCart ? " added" : ""}`}
+                          aria-label={inCart ? t(lang, "added") : t(lang, "add")}
+                          onClick={() => (inCart ? remove(tk.id) : add(tk))}
+                        >
+                          {inCart ? "✓" : "+"}
+                        </button>
                       </div>
                       <span className={`ov-badge${inCart ? " green" : ""}`}>
                         {inCart ? t(lang, "added") : t(lang, "inStock")}
                       </span>
-                      <button
-                        className={`ov-add-btn${inCart ? " added" : ""}`}
-                        onClick={() => (inCart ? remove(tk.id) : add(tk))}
-                      >
-                        {inCart ? t(lang, "added") : t(lang, "add")}
-                      </button>
                     </div>
                   );
                 })}

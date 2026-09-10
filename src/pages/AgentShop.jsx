@@ -8,6 +8,7 @@ import DigitSearch from "../components/DigitSearch";
 import DrawBanner from "../components/DrawBanner";
 import TicketResults from "../components/TicketResults";
 import CartDrawer from "../components/CartDrawer";
+import FloralBackground from "../components/FloralBackground";
 
 export default function AgentShop() {
   const { slug } = useParams();
@@ -116,12 +117,20 @@ export default function AgentShop() {
       </header>
 
       <section className="ov-hero-section" id="top">
-        <div className="ov-hero-inner">
+        <FloralBackground />        <div className="ov-hero-inner">
           <div className="ov-hero-grid">
             <div className="ov-hero" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div className="ov-next-draw-pill">
                 {draw ? t(lang, "nextDraw", { date: draw.label }) : t(lang, "noDrawPublished")}
               </div>
+              {agent.hero_image_url && (
+                <img
+                  src={agent.hero_image_url}
+                  alt={agent.name}
+                  style={{ width: "100%", maxHeight: 180, objectFit: "cover", borderRadius: 16 }}
+                  onError={(e) => (e.target.style.display = "none")}
+                />
+              )}
               <h1>{t(lang, "searchTicketsHeading", { n: availableCount })}</h1>
               <p>{t(lang, "searchTicketsSub")}</p>
             </div>

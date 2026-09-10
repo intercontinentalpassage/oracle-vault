@@ -68,22 +68,51 @@ button, select, input { font-family: inherit; }
   padding: 0 18px;
 }
 
+.ov-lang-switcher { position: relative; }
 .ov-lang-select {
   font-family: inherit;
   font-size: 12px;
   font-weight: 600;
-  padding: 0 10px;
+  padding: 0 14px;
   border-radius: 10px;
   border: 1px solid #DDE3E0;
   background: #FFFFFF;
   color: #0E1512;
   cursor: pointer;
   min-height: 44px;
+  appearance: none;
+  -webkit-appearance: none;
 }
+.ov-lang-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 100%;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: #FFFFFF;
+  border: 1px solid #DDE3E0;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(14,21,18,.12);
+  z-index: 30;
+}
+.ov-lang-menu-item {
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0E1512;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ov-lang-menu-item:hover { background: #F4F8F6; }
+.ov-lang-menu-item.selected { background: #E6F4EF; color: #0B5C4A; }
 
 /* Hero */
-.ov-hero-section { padding: clamp(26px, 4vw, 56px) clamp(14px, 4vw, 48px); }
-.ov-hero-inner { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 26px; }
+.ov-hero-section { position: relative; padding: clamp(26px, 4vw, 56px) clamp(14px, 4vw, 48px); overflow: hidden; }
+.ov-floral-bg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+.ov-hero-inner { position: relative; z-index: 1; max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 26px; }
 .ov-hero-grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); align-items: end; }
 .ov-next-draw-pill {
   display: inline-flex; align-self: flex-start; align-items: center; gap: 8px;
@@ -191,25 +220,30 @@ button, select, input { font-family: inherit; }
   box-shadow: 0 1px 3px rgba(14,21,18,.05);
 }
 .ov-ticket-card.in-cart { border-color: #0F7A63; }
-.ov-ticket-number-row { display: flex; gap: 4px; }
+.ov-ticket-number-row { display: flex; align-items: center; gap: 8px; }
+.ov-ticket-digits { display: flex; gap: 4px; flex: 1 1 auto; }
 .ov-ticket-digit {
   flex: 1 1 0; min-width: 0; aspect-ratio: .86;
   display: flex; align-items: center; justify-content: center;
-  font-family: 'Space Mono', monospace; font-size: clamp(17px, 2.2vw, 21px); font-weight: 700;
+  font-family: 'Space Mono', monospace; font-size: clamp(15px, 2vw, 19px); font-weight: 700;
   border-radius: 8px; background: #F4F8F6; color: #0E1512;
 }
 .ov-ticket-digit.in-cart { background: #0F7A63; color: #FFFFFF; }
+.ov-add-btn-sm {
+  flex: 0 0 auto;
+  width: 32px; height: 32px;
+  border-radius: 999px;
+  font-family: inherit; font-size: 17px; font-weight: 700; line-height: 1;
+  cursor: pointer;
+  border: 1px solid #0F7A63; background: #0F7A63; color: #FFFFFF;
+  display: flex; align-items: center; justify-content: center;
+}
+.ov-add-btn-sm.added { border-color: #0F7A63; background: #FFFFFF; color: #0F7A63; }
 .ov-badge {
   font-size: 10px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
   background: #F0F3F1; color: #5A6560; width: fit-content;
 }
 .ov-badge.green { background: #0F7A63; color: #FFFFFF; font-weight: 700; }
-.ov-add-btn {
-  font-family: inherit; min-height: 40px; padding: 0 16px; border-radius: 10px;
-  font-size: 13px; font-weight: 600; cursor: pointer;
-  border: 1px solid #0F7A63; background: #0F7A63; color: #FFFFFF;
-}
-.ov-add-btn.added { border-color: #DDE3E0; background: #FFFFFF; color: #5A6560; }
 
 .ov-empty-state { padding: 56px 20px; text-align: center; border-radius: 20px; background: #F4F8F6; border: 1px solid #E1EAE6; }
 .ov-empty-state .title { font-size: 17px; font-weight: 700; margin-bottom: 6px; }
@@ -242,3 +276,51 @@ button, select, input { font-family: inherit; }
 .ov-footer-links { display: flex; gap: 16px; }
 .ov-footer-links a.primary { color: #0F7A63; text-decoration: none; }
 .ov-footer-links a { color: #5A6560; text-decoration: none; }
+
+/* Admin/Agent shell */
+.ov-admin-shell { display: flex; min-height: 100vh; font-family: Sora, system-ui, sans-serif; }
+.ov-admin-sidebar {
+  width: 220px; flex: 0 0 220px; background: #0E1512; color: #F4F8F6;
+  padding: 20px 14px; display: flex; flex-direction: column; gap: 4px;
+}
+.ov-admin-brand { font-size: 15px; font-weight: 700; padding: 0 10px 16px; display: flex; align-items: center; gap: 8px; }
+.ov-admin-brand span { font-size: 11px; font-weight: 600; color: #8FA69D; background: #1B2621; padding: 2px 8px; border-radius: 999px; }
+.ov-admin-nav-link {
+  display: block; padding: 10px 12px; border-radius: 10px; font-size: 13px; font-weight: 600;
+  color: #C9D6D1; text-decoration: none; cursor: pointer; border: none; background: none; text-align: left;
+}
+.ov-admin-nav-link:hover { background: #1B2621; color: #F4F8F6; }
+.ov-admin-nav-link.active { background: #0F7A63; color: #FFFFFF; }
+.ov-admin-nav-link.back { margin-bottom: 8px; color: #8FA69D; }
+.ov-admin-nav-link.logout { margin-top: auto; color: #F4A9A0; }
+
+.ov-admin-content { flex: 1; padding: 28px clamp(20px, 3vw, 40px); max-width: 1200px; }
+.ov-admin-content h1 { font-size: 22px; margin: 0 0 20px; font-weight: 700; letter-spacing: -0.01em; }
+
+.ov-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ov-table th { text-align: left; padding: 10px 12px; color: #5A6560; font-weight: 600; border-bottom: 1px solid #E7EBE9; }
+.ov-table td { padding: 10px 12px; border-bottom: 1px solid #F0F3F1; vertical-align: middle; }
+.ov-table tr:hover td { background: #FAFCFB; }
+
+.ov-btn-sm {
+  font-family: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px;
+  border-radius: 8px; border: 1px solid #DDE3E0; background: #FFFFFF; color: #0E1512; cursor: pointer;
+}
+.ov-btn-sm.primary { border-color: #0F7A63; background: #0F7A63; color: #FFFFFF; }
+.ov-btn-sm.danger { border-color: #E3B4AC; background: #FFF5F3; color: #B23A2E; }
+.ov-btn-sm:disabled { opacity: .5; cursor: default; }
+
+.ov-status-pill { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; display: inline-block; }
+.ov-status-pill.available { background: #E6F4EF; color: #0B5C4A; }
+.ov-status-pill.held { background: #FDF3D8; color: #8A6B0E; }
+.ov-status-pill.sold { background: #F0F3F1; color: #5A6560; }
+.ov-status-pill.pending { background: #FDF3D8; color: #8A6B0E; }
+.ov-status-pill.confirmed { background: #E6F4EF; color: #0B5C4A; }
+.ov-status-pill.rejected { background: #FBE7E4; color: #B23A2E; }
+.ov-status-pill.approved { background: #E6F4EF; color: #0B5C4A; }
+
+.ov-card { background: #FFFFFF; border: 1px solid #E7EBE9; border-radius: 16px; padding: 18px; }
+.ov-form-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.ov-form-row label { flex: 1 1 160px; font-size: 12px; font-weight: 600; color: #5A6560; }
+.ov-form-row .ov-input { margin-top: 4px; }
+.ov-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }

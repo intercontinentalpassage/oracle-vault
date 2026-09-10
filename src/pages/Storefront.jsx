@@ -8,6 +8,7 @@ import DigitSearch from "../components/DigitSearch";
 import DrawBanner from "../components/DrawBanner";
 import TicketResults from "../components/TicketResults";
 import CartDrawer from "../components/CartDrawer";
+import FloralBackground from "../components/FloralBackground";
 
 export default function Storefront() {
   const [lang, setLang] = useLang();
@@ -107,7 +108,7 @@ export default function Storefront() {
       </header>
 
       <section className="ov-hero-section" id="top">
-        <div className="ov-hero-inner">
+        <FloralBackground />        <div className="ov-hero-inner">
           <div className="ov-hero-grid">
             <div className="ov-hero" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div className="ov-next-draw-pill">
