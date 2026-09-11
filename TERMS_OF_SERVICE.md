@@ -1,11 +1,11 @@
 # Terms of Service
 
 **Oracle Vault**
-Last updated: [DATE]
+Last updated: September 11, 2026
 
 Please read these Terms of Service ("Terms") carefully before using the
 Oracle Vault website, Telegram bot, or any related services (together,
-the "Service"), operated by [LEGAL BUSINESS NAME] ("we," "us," or "our").
+the "Service"), operated by Intercontinental Passage ("we," "us," or "our").
 
 By accessing or using the Service, you agree to be bound by these Terms.
 If you do not agree, please do not use the Service.
@@ -65,7 +65,7 @@ To submit a purchase request or look up your purchase history, you
 will be asked for a phone number and, optionally, your name. We use
 this information solely to process your request, verify your
 purchases, and communicate with you about your order. See our Privacy
-Policy [LINK] for more detail on how your information is handled.
+Policy (https://oracle-vault.netlify.app/#/privacy) for more detail on how your information is handled.
 
 You are responsible for the accuracy of the phone number and other
 details you provide. We are not responsible for a failed or misrouted
@@ -90,7 +90,7 @@ or displayed results will always be accurate or up to date.
 
 ## 8. Limitation of Liability
 
-To the fullest extent permitted by law, [LEGAL BUSINESS NAME] shall
+To the fullest extent permitted by law, Intercontinental Passage shall
 not be liable for any indirect, incidental, special, or consequential
 damages arising out of or relating to your use of the Service,
 including but not limited to loss of winnings, missed purchases, or
@@ -124,7 +124,7 @@ jurisdiction of the courts of Thailand.
 ## 12. Contact
 
 Questions about these Terms can be sent to:
-**[CONTACT EMAIL]**
+**saimwunnaw@gmail.com**
 
 ---
 

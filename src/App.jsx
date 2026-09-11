@@ -4,6 +4,7 @@ import Storefront from "./pages/Storefront";
 import AgentShop from "./pages/AgentShop";
 import MyTickets from "./pages/MyTickets";
 import Login from "./pages/Login";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminTickets from "./pages/admin/AdminTickets";
@@ -33,6 +34,7 @@ export default function App() {
           <Route path="/shop/:slug" element={<AgentShop />} />
           <Route path="/my-tickets" element={<MyTickets />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
 
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<Navigate to="tickets" replace />} />

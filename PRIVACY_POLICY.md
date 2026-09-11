@@ -1,9 +1,9 @@
 # Privacy Policy
 
 **Oracle Vault**
-Last updated: [DATE]
+Last updated: September 11, 2026
 
-This Privacy Policy explains how [LEGAL BUSINESS NAME] ("we," "us," or
+This Privacy Policy explains how Intercontinental Passage ("we," "us," or
 "our") collects, uses, and protects information when you use the
 Oracle Vault website, Telegram bot, and related services (the
 "Service").
@@ -110,7 +110,7 @@ the revised Policy.
 
 Questions about this Privacy Policy, or requests regarding your
 personal information, can be sent to:
-**[CONTACT EMAIL]**
+**saimwunnaw@gmail.com**
 
 ---
 

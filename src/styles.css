@@ -73,6 +73,12 @@ button, select, input { font-family: inherit; }
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
 }
 .ov-nav-link:active { transform: scale(0.97); }
+.ov-telegram-link {
+  gap: 6px;
+  border-color: #26A5E4;
+  color: #229ED9;
+}
+.ov-telegram-link:hover { background: #E8F6FD; }
 .ov-nav-link.primary {
   border: none;
   background: #0F7A63;
@@ -340,6 +346,9 @@ button, select, input { font-family: inherit; }
 
 /* Footer */
 .ov-footer { border-top: 1px solid #E7EBE9; padding: 26px clamp(14px, 4vw, 48px); font-size: 12px; color: #5A6560; }
+@media (max-width: 640px) {
+  .ov-footer { padding-bottom: 84px; }
+}
 .ov-footer-inner { max-width: 1180px; margin: 0 auto; display: flex; gap: 16px; flex-wrap: wrap; justify-content: space-between; }
 .ov-footer-links { display: flex; gap: 16px; }
 .ov-footer-links a.primary { color: #0F7A63; text-decoration: none; }
