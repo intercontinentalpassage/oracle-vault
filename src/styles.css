@@ -344,6 +344,15 @@ button, select, input { font-family: inherit; }
 .ov-footer-links { display: flex; gap: 16px; }
 .ov-footer-links a.primary { color: #0F7A63; text-decoration: none; }
 .ov-footer-links a { color: #5A6560; text-decoration: none; }
+.ov-link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  cursor: pointer;
+}
+.ov-footer-links .ov-link-button.primary { color: #0F7A63; text-decoration: none; }
 
 /* Admin/Agent shell */
 .ov-admin-shell { display: flex; min-height: 100vh; font-family: Sora, system-ui, sans-serif; }

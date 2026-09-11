@@ -172,9 +172,13 @@ export default function Storefront() {
           <span>{t(lang, "footerNotice")}</span>
           <div className="ov-footer-links">
             <a href="#/login">{t(lang, "login")}</a>
-            <a href="#top" className="primary">
+            <button
+              type="button"
+              className="primary ov-link-button"
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            >
               {t(lang, "backToTop")}
-            </a>
+            </button>
           </div>
         </div>
       </footer>
