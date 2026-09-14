@@ -30,6 +30,8 @@ export default function AdminTickets() {
   const [priceEdits, setPriceEdits] = useState({});
   const [batchAgentId, setBatchAgentId] = useState("");
   const [batching, setBatching] = useState(false);
+  const [splitModal, setSplitModal] = useState(null); // { ticket, priceA, groupA, priceB, groupB }
+  const [splitting, setSplitting] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -128,26 +130,44 @@ export default function AdminTickets() {
     load();
   }
 
-  async function splitTicket(tk) {
+  function openSplitModal(tk) {
     if (tk.status !== "available") return;
-    if (!confirm(`Split ${tk.number} into 2 single tickets at ${currency}${(Number(tk.price) || 0) / 2} each?`)) return;
-    setError("");
     const halfPrice = (Number(tk.price) || 0) / 2;
+    setSplitModal({
+      ticket: tk,
+      priceA: String(halfPrice),
+      groupA: tk.group_key,
+      priceB: String(halfPrice),
+      groupB: tk.group_key,
+    });
+  }
+
+  async function confirmSplit() {
+    if (!splitModal) return;
+    setSplitting(true);
+    setError("");
     try {
-      const { error: updateError } = await supabase.from("tickets").update({ price: halfPrice }).eq("id", tk.id);
+      const { ticket, priceA, groupA, priceB, groupB } = splitModal;
+      const { error: updateError } = await supabase
+        .from("tickets")
+        .update({ price: Number(priceA) || 0, group_key: groupA })
+        .eq("id", ticket.id);
       if (updateError) throw updateError;
       const { error: insertError } = await supabase.from("tickets").insert({
-        number: tk.number,
-        group_key: tk.group_key,
-        price: halfPrice,
+        number: ticket.number,
+        group_key: groupB,
+        price: Number(priceB) || 0,
         status: "available",
-        draw_id: tk.draw_id,
-        agent_id: tk.agent_id,
+        draw_id: ticket.draw_id,
+        agent_id: ticket.agent_id,
       });
       if (insertError) throw insertError;
+      setSplitModal(null);
       load();
     } catch (e) {
       setError(e.message || String(e));
+    } finally {
+      setSplitting(false);
     }
   }
 
@@ -512,7 +532,7 @@ export default function AdminTickets() {
                 </td>
                 <td style={{ display: "flex", gap: 6 }}>
                   {tk.status === "available" && (
-                    <button className="ov-btn-sm" onClick={() => splitTicket(tk)}>
+                    <button className="ov-btn-sm" onClick={() => openSplitModal(tk)}>
                       Split
                     </button>
                   )}
@@ -534,6 +554,61 @@ export default function AdminTickets() {
             ))}
           </tbody>
         </table></div>
+      )}
+
+      {splitModal && (
+        <div className="ov-summary-overlay" onClick={() => !splitting && setSplitModal(null)} style={{ position: "fixed" }}>
+          <div className="ov-summary-wrap" style={{ maxWidth: 400 }} onClick={(e) => e.stopPropagation()}>
+            <div className="ov-summary-card">
+              <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>
+                Split ticket {splitModal.ticket.number}
+              </div>
+              <p style={{ fontSize: 13, color: "#5A6560", marginTop: 0, marginBottom: 14 }}>
+                Currently {currency}
+                {Number(splitModal.ticket.price).toLocaleString()} in "
+                {groups.find((g) => g.key === splitModal.ticket.group_key)?.label || splitModal.ticket.group_key}".
+                Set the price and group for each of the 2 resulting tickets.
+              </p>
+
+              {["A", "B"].map((half) => (
+                <div key={half} style={{ marginTop: half === "A" ? 0 : 14 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6 }}>Ticket {half}</div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input
+                      className="ov-input"
+                      style={{ margin: 0, flex: 1 }}
+                      type="number"
+                      value={splitModal[`price${half}`]}
+                      onChange={(e) => setSplitModal((prev) => ({ ...prev, [`price${half}`]: e.target.value }))}
+                      placeholder="Price"
+                    />
+                    <select
+                      className="ov-input"
+                      style={{ margin: 0, flex: 1 }}
+                      value={splitModal[`group${half}`]}
+                      onChange={(e) => setSplitModal((prev) => ({ ...prev, [`group${half}`]: e.target.value }))}
+                    >
+                      {groups.map((g) => (
+                        <option key={g.key} value={g.key}>
+                          {g.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              ))}
+
+              {error && <p style={{ color: "#B23A2E", fontSize: 13, marginTop: 12 }}>{error}</p>}
+
+              <button className="ov-btn-primary" style={{ width: "100%", marginTop: 16 }} onClick={confirmSplit} disabled={splitting}>
+                {splitting ? "Splitting…" : "Split"}
+              </button>
+              <button className="ov-btn-sm" style={{ width: "100%", marginTop: 8 }} onClick={() => setSplitModal(null)} disabled={splitting}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
