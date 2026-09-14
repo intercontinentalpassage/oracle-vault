@@ -29,6 +29,8 @@ export default function AdminTickets() {
   const [selected, setSelected] = useState(new Set());
   const [priceEdits, setPriceEdits] = useState({});
   const [batchAgentId, setBatchAgentId] = useState("");
+  const [batchPrice, setBatchPrice] = useState("");
+  const [batchCurrency, setBatchCurrency] = useState("");
   const [batching, setBatching] = useState(false);
   const [splitModal, setSplitModal] = useState(null); // { ticket, priceA, groupA, priceB, groupB }
   const [splitting, setSplitting] = useState(false);
@@ -131,7 +133,7 @@ export default function AdminTickets() {
   }
 
   function openSplitModal(tk) {
-    if (tk.status !== "available") return;
+    if (tk.status !== "available" || tk.ticket_type === "single") return;
     const halfPrice = (Number(tk.price) || 0) / 2;
     setSplitModal({
       ticket: tk,
@@ -150,7 +152,7 @@ export default function AdminTickets() {
       const { ticket, priceA, groupA, priceB, groupB } = splitModal;
       const { error: updateError } = await supabase
         .from("tickets")
-        .update({ price: Number(priceA) || 0, group_key: groupA })
+        .update({ price: Number(priceA) || 0, group_key: groupA, ticket_type: "single" })
         .eq("id", ticket.id);
       if (updateError) throw updateError;
       const { error: insertError } = await supabase.from("tickets").insert({
@@ -160,6 +162,7 @@ export default function AdminTickets() {
         status: "available",
         draw_id: ticket.draw_id,
         agent_id: ticket.agent_id,
+        ticket_type: "single",
       });
       if (insertError) throw insertError;
       setSplitModal(null);
@@ -205,11 +208,22 @@ export default function AdminTickets() {
         setError("None of the selected tickets are eligible (must be available and unassigned).");
         return;
       }
+      const overridePrice = batchPrice.trim() === "" ? null : Number(batchPrice);
       const selectedTickets = tickets.filter((t) => ids.includes(t.id));
-      const total = selectedTickets.reduce((sum, t) => sum + (Number(t.price) || 0), 0);
+      const total = overridePrice !== null ? overridePrice * ids.length : selectedTickets.reduce((sum, t) => sum + (Number(t.price) || 0), 0);
 
-      const { error: ticketError } = await supabase.from("tickets").update({ agent_id: batchAgentId }).in("id", ids);
+      const ticketPatch = { agent_id: batchAgentId };
+      if (overridePrice !== null) ticketPatch.price = overridePrice;
+      const { error: ticketError } = await supabase.from("tickets").update(ticketPatch).in("id", ids);
       if (ticketError) throw ticketError;
+
+      if (batchCurrency.trim() !== "") {
+        const { error: currencyError } = await supabase
+          .from("agents")
+          .update({ currency_symbol: batchCurrency.trim() })
+          .eq("id", batchAgentId);
+        if (currencyError) throw currencyError;
+      }
 
       const { error: invoiceError } = await supabase.from("invoices").insert({
         agent_id: batchAgentId,
@@ -220,6 +234,8 @@ export default function AdminTickets() {
 
       setSelected(new Set());
       setBatchAgentId("");
+      setBatchPrice("");
+      setBatchCurrency("");
       load();
     } catch (e) {
       setError(e.message || String(e));
@@ -380,12 +396,22 @@ export default function AdminTickets() {
         <strong style={{ fontSize: 13 }}>Send batch to agent</strong>
         <p style={{ fontSize: 12, color: "#5A6560", margin: "4px 0 12px" }}>
           Check tickets below and pick an agent — only available, unassigned ones among your selection actually get
-          sent (others are skipped), and this creates an invoice recording the handoff.
+          sent (others are skipped), and this creates an invoice recording the handoff. Optionally set a new price
+          per ticket and/or the agent's shop currency before sending.
         </p>
         <div className="ov-form-row" style={{ alignItems: "flex-end" }}>
           <label>
             Agent
-            <select className="ov-input" value={batchAgentId} onChange={(e) => setBatchAgentId(e.target.value)}>
+            <select
+              className="ov-input"
+              value={batchAgentId}
+              onChange={(e) => {
+                const id = e.target.value;
+                setBatchAgentId(id);
+                const chosen = agents.find((a) => a.id === id);
+                setBatchCurrency(chosen?.currency_symbol || "");
+              }}
+            >
               <option value="">— select agent —</option>
               {agents.map((a) => (
                 <option key={a.id} value={a.id}>
@@ -393,6 +419,25 @@ export default function AdminTickets() {
                 </option>
               ))}
             </select>
+          </label>
+          <label>
+            Price per ticket (optional)
+            <input
+              className="ov-input"
+              type="number"
+              value={batchPrice}
+              onChange={(e) => setBatchPrice(e.target.value)}
+              placeholder="Keep existing"
+            />
+          </label>
+          <label>
+            Agent currency (optional)
+            <input
+              className="ov-input"
+              value={batchCurrency}
+              onChange={(e) => setBatchCurrency(e.target.value)}
+              placeholder={currency}
+            />
           </label>
           <button
             className="ov-btn-sm primary"
@@ -416,8 +461,8 @@ export default function AdminTickets() {
             <option value="archived">Archived (past draw date)</option>
           </select>
           <select className="ov-input" style={{ width: 180, marginTop: 0 }} value={agentFilter} onChange={(e) => setAgentFilter(e.target.value)}>
-            <option value="">All (any/no agent)</option>
-            <option value="none">No agent (storefront)</option>
+            <option value="">All</option>
+            <option value="none">Storefront</option>
             {agents.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name}
@@ -531,7 +576,7 @@ export default function AdminTickets() {
                   </select>
                 </td>
                 <td style={{ display: "flex", gap: 6 }}>
-                  {tk.status === "available" && (
+                  {tk.status === "available" && tk.ticket_type !== "single" && (
                     <button className="ov-btn-sm" onClick={() => openSplitModal(tk)}>
                       Split
                     </button>
