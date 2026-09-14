@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import Dropdown from "../../components/Dropdown";
 
 const FUNCTIONS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-accounts`;
 
@@ -154,22 +155,22 @@ export default function AdminLogins() {
         <div className="ov-form-row">
           <label>
             Role
-            <select className="ov-input" value={role} onChange={(e) => setRole(e.target.value)}>
+            <Dropdown className="ov-input" value={role} onChange={(e) => setRole(e.target.value)}>
               <option value="agent">agent</option>
               <option value="admin">admin</option>
-            </select>
+            </Dropdown>
           </label>
           {role === "agent" && (
             <label>
               Agent
-              <select className="ov-input" value={agentId} onChange={(e) => setAgentId(e.target.value)}>
+              <Dropdown className="ov-input" value={agentId} onChange={(e) => setAgentId(e.target.value)}>
                 <option value="">— select agent —</option>
                 {agents.map((a) => (
                   <option key={a.id} value={a.id}>
                     {a.name}
                   </option>
                 ))}
-              </select>
+              </Dropdown>
             </label>
           )}
         </div>
@@ -211,7 +212,7 @@ export default function AdminLogins() {
                 <td>{p.display_name || "—"}</td>
                 <td style={{ fontFamily: "'Space Mono', monospace", fontSize: 11 }}>{p.id}</td>
                 <td>
-                  <select
+                  <Dropdown
                     className="ov-input"
                     style={{ margin: 0, padding: "6px 8px", fontSize: 12 }}
                     value={p.role}
@@ -219,11 +220,11 @@ export default function AdminLogins() {
                   >
                     <option value="admin">admin</option>
                     <option value="agent">agent</option>
-                  </select>
+                  </Dropdown>
                 </td>
                 <td>
                   {p.role === "agent" ? (
-                    <select
+                    <Dropdown
                       className="ov-input"
                       style={{ margin: 0, padding: "6px 8px", fontSize: 12 }}
                       value={p.agent_id || ""}
@@ -235,7 +236,7 @@ export default function AdminLogins() {
                           {a.name}
                         </option>
                       ))}
-                    </select>
+                    </Dropdown>
                   ) : (
                     "—"
                   )}

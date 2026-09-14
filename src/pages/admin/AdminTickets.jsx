@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { getCurrencySymbol, useSiteSettingsVersion } from "../../lib/siteSettingsStore";
+import Dropdown from "../../components/Dropdown";
 
 export default function AdminTickets() {
   useSiteSettingsVersion();
@@ -312,13 +313,13 @@ export default function AdminTickets() {
         <div className="ov-form-row" style={{ marginTop: 10 }}>
           <label>
             Group
-            <select className="ov-input" value={bulkGroup} onChange={(e) => setBulkGroup(e.target.value)}>
+            <Dropdown className="ov-input" value={bulkGroup} onChange={(e) => setBulkGroup(e.target.value)}>
               {groups.map((g) => (
                 <option key={g.key} value={g.key}>
                   {g.label}
                 </option>
               ))}
-            </select>
+            </Dropdown>
           </label>
           <label>
             Price ({currency})
@@ -331,14 +332,14 @@ export default function AdminTickets() {
           </label>
           <label>
             Draw <span style={{ color: "#B23A2E" }}>*</span>
-            <select className="ov-input" value={bulkDrawId} onChange={(e) => setBulkDrawId(e.target.value)} required>
+            <Dropdown className="ov-input" value={bulkDrawId} onChange={(e) => setBulkDrawId(e.target.value)} required>
               <option value="">— select draw —</option>
               {upcomingDraws.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.label} ({d.draw_date})
                 </option>
               ))}
-            </select>
+            </Dropdown>
           </label>
         </div>
         {!bulkDrawId && (
@@ -402,7 +403,7 @@ export default function AdminTickets() {
         <div className="ov-form-row" style={{ alignItems: "flex-end" }}>
           <label>
             Agent
-            <select
+            <Dropdown
               className="ov-input"
               value={batchAgentId}
               onChange={(e) => {
@@ -418,7 +419,7 @@ export default function AdminTickets() {
                   {a.name}
                 </option>
               ))}
-            </select>
+            </Dropdown>
           </label>
           <label>
             Price per ticket (optional)
@@ -453,14 +454,14 @@ export default function AdminTickets() {
 
       <div className="ov-toolbar">
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          <select className="ov-input" style={{ width: 180, marginTop: 0 }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <Dropdown className="ov-input" style={{ width: 180, marginTop: 0 }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
             <option value="">All statuses</option>
             <option value="available">Available</option>
             <option value="held">Held</option>
             <option value="sold">Sold</option>
             <option value="archived">Archived (past draw date)</option>
-          </select>
-          <select className="ov-input" style={{ width: 180, marginTop: 0 }} value={agentFilter} onChange={(e) => setAgentFilter(e.target.value)}>
+          </Dropdown>
+          <Dropdown className="ov-input" style={{ width: 180, marginTop: 0 }} value={agentFilter} onChange={(e) => setAgentFilter(e.target.value)}>
             <option value="">All</option>
             <option value="none">Storefront</option>
             {agents.map((a) => (
@@ -468,7 +469,7 @@ export default function AdminTickets() {
                 {a.name}
               </option>
             ))}
-          </select>
+          </Dropdown>
           <input
             className="ov-input"
             style={{ width: 180, marginTop: 0 }}
@@ -538,7 +539,7 @@ export default function AdminTickets() {
                   </div>
                 </td>
                 <td>
-                  <select
+                  <Dropdown
                     className="ov-input"
                     style={{ margin: 0, padding: "6px 8px", fontSize: 12 }}
                     value={tk.draw_id || ""}
@@ -550,7 +551,7 @@ export default function AdminTickets() {
                         {d.label}
                       </option>
                     ))}
-                  </select>
+                  </Dropdown>
                 </td>
                 <td>
                   <span className={`ov-status-pill ${tk.status}`}>{tk.status}</span>
@@ -561,7 +562,7 @@ export default function AdminTickets() {
                   )}
                 </td>
                 <td>
-                  <select
+                  <Dropdown
                     className="ov-input"
                     style={{ margin: 0, padding: "6px 8px", fontSize: 12 }}
                     value={tk.agent_id || ""}
@@ -573,7 +574,7 @@ export default function AdminTickets() {
                         {a.name}
                       </option>
                     ))}
-                  </select>
+                  </Dropdown>
                 </td>
                 <td style={{ display: "flex", gap: 6 }}>
                   {tk.status === "available" && tk.ticket_type !== "single" && (
@@ -627,7 +628,7 @@ export default function AdminTickets() {
                       onChange={(e) => setSplitModal((prev) => ({ ...prev, [`price${half}`]: e.target.value }))}
                       placeholder="Price"
                     />
-                    <select
+                    <Dropdown
                       className="ov-input"
                       style={{ margin: 0, flex: 1 }}
                       value={splitModal[`group${half}`]}
@@ -638,7 +639,7 @@ export default function AdminTickets() {
                           {g.label}
                         </option>
                       ))}
-                    </select>
+                    </Dropdown>
                   </div>
                 </div>
               ))}

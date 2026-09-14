@@ -130,6 +130,56 @@ button, select, input { font-family: inherit; }
 .ov-lang-menu-item:hover { background: #F4F8F6; }
 .ov-lang-menu-item.selected { background: #E6F4EF; color: #0B5C4A; }
 
+/* Themed dropdown (replaces native <select> popups everywhere) */
+.ov-dropdown-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  text-align: left;
+  background: #FFFFFF;
+  font-family: inherit;
+  color: #0E1512;
+}
+.ov-dropdown-trigger:hover:not(:disabled) { border-color: #B9C4BF; }
+.ov-dropdown-trigger:disabled { opacity: .6; cursor: default; }
+.ov-dropdown-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ov-dropdown-chevron { flex-shrink: 0; color: #5A6560; transition: transform 0.15s ease; }
+.ov-dropdown-chevron.open { transform: rotate(180deg); }
+.ov-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  min-width: 160px;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: #FFFFFF;
+  border: 1px solid #DDE3E0;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(14,21,18,.12);
+  max-height: 280px;
+  overflow-y: auto;
+  z-index: 80;
+  animation: ov-fade-in-down 0.15s ease;
+  transform-origin: top left;
+}
+.ov-dropdown-option {
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0E1512;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.12s ease;
+}
+.ov-dropdown-option:hover { background: #F4F8F6; }
+.ov-dropdown-option.selected { background: #E6F4EF; color: #0B5C4A; }
+
 /* Hero */
 .ov-hero-section {
   position: relative; padding: clamp(26px, 4vw, 56px) clamp(14px, 4vw, 48px); overflow: hidden;

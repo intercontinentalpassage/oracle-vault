@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { getCurrencySymbol, useSiteSettingsVersion } from "../../lib/siteSettingsStore";
+import Dropdown from "../../components/Dropdown";
 
 export default function AdminPurchaseRequests() {
   useSiteSettingsVersion();
@@ -176,12 +177,12 @@ export default function AdminPurchaseRequests() {
       {error && <p style={{ color: "#B23A2E", fontSize: 13, marginBottom: 12 }}>{error}</p>}
 
       <div className="ov-toolbar">
-        <select className="ov-input" style={{ width: 180, marginTop: 0 }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+        <Dropdown className="ov-input" style={{ width: 180, marginTop: 0 }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="pending">Pending</option>
           <option value="confirmed">Confirmed</option>
           <option value="rejected">Rejected</option>
           <option value="">All</option>
-        </select>
+        </Dropdown>
         <span style={{ fontSize: 12, color: "#5A6560" }}>{filtered.length} requests</span>
       </div>
 
@@ -237,9 +238,10 @@ export default function AdminPurchaseRequests() {
                         {ticketsById[id]?.number || id.slice(0, 8)}
                       </label>
                       {isPending && !checked && (
-                        <select
+                        <Dropdown
                           className="ov-input"
-                          style={{ margin: 0, padding: "2px 6px", fontSize: 11, width: "auto" }}
+                          fit
+                          style={{ margin: 0, padding: "2px 6px", fontSize: 11 }}
                           value={getGroupChoice(id)}
                           onChange={(e) =>
                             setGroupReassignments((prev) => ({ ...prev, [id]: e.target.value }))
@@ -250,7 +252,7 @@ export default function AdminPurchaseRequests() {
                               {g.label}
                             </option>
                           ))}
-                        </select>
+                        </Dropdown>
                       )}
                     </div>
                   );
