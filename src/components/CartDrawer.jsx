@@ -1,15 +1,23 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { t } from "../lib/i18n";
 import { useCart } from "../lib/CartContext";
 import { supabase } from "../lib/supabaseClient";
+import { useSessionProfile } from "../lib/useSessionProfile";
 import { getCurrencySymbol, useSiteSettingsVersion } from "../lib/siteSettingsStore";
 import CartSummaryCard from "./CartSummaryCard";
 
 export default function CartDrawer({ lang, open, onClose, agentId, currencyOverride }) {
   const { cart, remove, clear } = useCart();
+  const { profile: staffProfile } = useSessionProfile();
+  const isStaff = staffProfile?.role === "admin" || staffProfile?.role === "agent";
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
   const [agentCode, setAgentCode] = useState("");
+  const [useExisting, setUseExisting] = useState(false);
+  const [customerQuery, setCustomerQuery] = useState("");
+  const [customerResults, setCustomerResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const searchTimerRef = useRef(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
@@ -20,6 +28,33 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
   if (!open) return null;
 
   const total = cart.reduce((sum, tk) => sum + (Number(tk.price) || 0), 0);
+
+  let searchTimer;
+  function searchCustomers(query) {
+    setCustomerQuery(query);
+    clearTimeout(searchTimerRef.current);
+    if (!query.trim()) {
+      setCustomerResults([]);
+      return;
+    }
+    searchTimerRef.current = setTimeout(async () => {
+      setSearching(true);
+      const { data } = await supabase
+        .from("customers")
+        .select("phone, name")
+        .ilike("phone", `%${query.trim()}%`)
+        .limit(8);
+      setCustomerResults(data || []);
+      setSearching(false);
+    }, 250);
+  }
+
+  function pickCustomer(c) {
+    setPhone(c.phone);
+    setName(c.name || "");
+    setCustomerQuery("");
+    setCustomerResults([]);
+  }
 
   async function submit() {
     const cleanPhone = phone.trim();
@@ -135,6 +170,53 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
             </button>
 
             <div style={{ marginTop: 16 }}>
+              {isStaff && (
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600 }}>
+                    <input
+                      type="checkbox"
+                      checked={useExisting}
+                      onChange={(e) => {
+                        setUseExisting(e.target.checked);
+                        setCustomerQuery("");
+                        setCustomerResults([]);
+                      }}
+                    />
+                    Existing customer
+                  </label>
+                  {useExisting && (
+                    <div style={{ position: "relative", marginTop: 8 }}>
+                      <input
+                        className="ov-input"
+                        style={{ margin: 0 }}
+                        value={customerQuery}
+                        onChange={(e) => searchCustomers(e.target.value)}
+                        placeholder="Search by phone…"
+                      />
+                      {customerQuery.trim() !== "" && (
+                        <ul className="ov-dropdown-menu" style={{ position: "absolute" }}>
+                          {searching ? (
+                            <li className="ov-dropdown-option" style={{ cursor: "default" }}>
+                              Searching…
+                            </li>
+                          ) : customerResults.length === 0 ? (
+                            <li className="ov-dropdown-option" style={{ cursor: "default", color: "#5A6560" }}>
+                              No matches
+                            </li>
+                          ) : (
+                            customerResults.map((c) => (
+                              <li key={c.phone} className="ov-dropdown-option" onClick={() => pickCustomer(c)}>
+                                {c.phone}
+                                {c.name ? ` — ${c.name}` : ""}
+                              </li>
+                            ))
+                          )}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
               <label style={{ fontSize: 13, fontWeight: 600 }}>
                 {t(lang, "placeholderPhone")}
                 <input
