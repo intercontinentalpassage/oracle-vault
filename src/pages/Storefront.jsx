@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { t, useLang } from "../lib/i18n";
 import { useCart } from "../lib/CartContext";
+import { useSessionProfile } from "../lib/useSessionProfile";
 import LanguageSwitcher from "../components/LanguageSwitcher";
 import DigitSearch from "../components/DigitSearch";
 import DrawBanner from "../components/DrawBanner";
@@ -14,6 +15,7 @@ import { matchesDigits } from "../lib/ticketMatch";
 
 export default function Storefront() {
   const [lang, setLang] = useLang();
+  const { profile: staffProfile } = useSessionProfile();
   const [tickets, setTickets] = useState([]);
   const [groups, setGroups] = useState([]);
   const [resultsDraw, setResultsDraw] = useState(null); // latest published results, shown in the numbers banner
@@ -128,6 +130,16 @@ export default function Storefront() {
           <div className="ov-brand-name">Oracle Vault</div>
         </div>
         <LanguageSwitcher lang={lang} onChange={setLang} />
+        {staffProfile?.role === "admin" && (
+          <Link to="/admin" className="ov-nav-link">
+            ← Admin
+          </Link>
+        )}
+        {staffProfile?.role === "agent" && (
+          <Link to="/agent" className="ov-nav-link">
+            ← My dashboard
+          </Link>
+        )}
         <Link to="/my-tickets" className="ov-nav-link">
           {t(lang, "myTickets")}
         </Link>
