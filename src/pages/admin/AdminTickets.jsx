@@ -151,6 +151,21 @@ export default function AdminTickets() {
     }
   }
 
+  async function recallTicket(tk) {
+    if (tk.status !== "sold") return;
+    if (!confirm(`Recall ${tk.number} back to available? This also removes its sale record, if any.`)) return;
+    setError("");
+    try {
+      const { error: saleDeleteError } = await supabase.from("sales").delete().eq("ticket_id", tk.id);
+      if (saleDeleteError) throw saleDeleteError;
+      const { error: updateError } = await supabase.from("tickets").update({ status: "available" }).eq("id", tk.id);
+      if (updateError) throw updateError;
+      load();
+    } catch (e) {
+      setError(e.message || String(e));
+    }
+  }
+
   function toggleSelected(id) {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -504,6 +519,11 @@ export default function AdminTickets() {
                   {tk.status !== "sold" && (
                     <button className="ov-btn-sm" onClick={() => updateTicket(tk.id, { status: "sold" })}>
                       Mark sold
+                    </button>
+                  )}
+                  {tk.status === "sold" && (
+                    <button className="ov-btn-sm" onClick={() => recallTicket(tk)}>
+                      Recall
                     </button>
                   )}
                   <button className="ov-btn-sm danger" onClick={() => deleteTicket(tk.id)}>
