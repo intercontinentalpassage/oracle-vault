@@ -10,6 +10,7 @@ export default function AgentSettings() {
   const [agent, setAgent] = useState(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [heroUrl, setHeroUrl] = useState("");
   const [currency, setCurrency] = useState("");
   const [saving, setSaving] = useState(false);
@@ -25,6 +26,7 @@ export default function AgentSettings() {
       setAgent(data);
       setName(data.name || "");
       setPhone(data.phone || "");
+      setEmail(data.email || "");
       setHeroUrl(data.hero_image_url || "");
       setCurrency(data.currency_symbol || "");
     }
@@ -43,6 +45,7 @@ export default function AgentSettings() {
       .update({
         name: name.trim(),
         phone: phone.trim() || null,
+        email: email.trim() || null,
         hero_image_url: heroUrl.trim() || null,
         currency_symbol: currency.trim() || null,
       })
@@ -112,7 +115,9 @@ export default function AgentSettings() {
       <div className="ov-card" style={{ maxWidth: 480, marginBottom: 20 }}>
         <strong style={{ fontSize: 13 }}>Your shop link</strong>
         <p style={{ fontSize: 12, color: "#5A6560", margin: "4px 0 10px" }}>
-          Share this with customers — it shows only your assigned tickets.
+          Share this with customers — it shows only your assigned tickets. Your slug (the part after "/shop/") also
+          works as your agent code — customers can enter it (or your contact email below) when requesting a
+          purchase on the main site to credit it to you.
         </p>
         <div style={{ display: "flex", gap: 8 }}>
           <input className="ov-input" style={{ margin: 0, flex: 1 }} value={shopUrl} readOnly onFocus={(e) => e.target.select()} />
@@ -146,6 +151,10 @@ export default function AgentSettings() {
         <label style={{ fontSize: 12, fontWeight: 600, color: "#5A6560", display: "block", marginTop: 12 }}>
           Phone
           <input className="ov-input" value={phone} onChange={(e) => setPhone(e.target.value)} />
+        </label>
+        <label style={{ fontSize: 12, fontWeight: 600, color: "#5A6560", display: "block", marginTop: 12 }}>
+          Contact email
+          <input className="ov-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         </label>
 
         <div style={{ marginTop: 16 }}>

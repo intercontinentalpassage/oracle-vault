@@ -27,6 +27,7 @@ shop/dashboard when set.
 | id | uuid, PK | |
 | name | text | |
 | phone | text | |
+| email | text | nullable — agent-set contact email; usable alongside `slug` as an "agent code" customers can enter on the main storefront's checkout to credit a purchase to that agent |
 | slug | text, unique | |
 | hero_image_url | text | Supabase Storage URL |
 | active | boolean | inactive agents' shops show "doesn't exist" |

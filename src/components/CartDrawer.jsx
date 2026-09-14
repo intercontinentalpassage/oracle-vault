@@ -9,6 +9,7 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
   const { cart, remove, clear } = useCart();
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
+  const [agentCode, setAgentCode] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
@@ -29,12 +30,30 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
     setError("");
     setSending(true);
     try {
+      let resolvedAgentId = agentId || null;
+      const code = agentCode.trim();
+      if (!resolvedAgentId && code) {
+        const { data: matchedAgent } = await supabase
+          .from("agents")
+          .select("id")
+          .eq("active", true)
+          .or(`slug.eq.${code},email.eq.${code}`)
+          .maybeSingle();
+        if (matchedAgent) {
+          resolvedAgentId = matchedAgent.id;
+        } else {
+          setError("That agent code or email wasn't found — check it, or leave it blank to continue without one.");
+          setSending(false);
+          return;
+        }
+      }
+
       const { error: insertError } = await supabase.from("purchase_requests").insert({
         customer_phone: cleanPhone,
         customer_name: name.trim() || null,
         ticket_ids: cart.map((tk) => tk.id),
         total,
-        agent_id: agentId || null,
+        agent_id: resolvedAgentId,
       });
       if (insertError) throw insertError;
       setSent(true);
@@ -135,6 +154,17 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
                   placeholder={t(lang, "placeholderName")}
                 />
               </label>
+              {!agentId && (
+                <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginTop: 10 }}>
+                  Agent code or email (optional)
+                  <input
+                    className="ov-input"
+                    value={agentCode}
+                    onChange={(e) => setAgentCode(e.target.value)}
+                    placeholder="If an agent referred you"
+                  />
+                </label>
+              )}
               {error && <p style={{ color: "#B23A2E", fontSize: 13, marginTop: 8 }}>{error}</p>}
               <button
                 className="ov-btn-primary"
