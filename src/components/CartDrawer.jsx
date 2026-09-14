@@ -39,10 +39,11 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
     }
     searchTimerRef.current = setTimeout(async () => {
       setSearching(true);
+      const q = query.trim();
       const { data } = await supabase
         .from("customers")
         .select("phone, name")
-        .ilike("phone", `%${query.trim()}%`)
+        .or(`phone.ilike.%${q}%,name.ilike.%${q}%`)
         .limit(8);
       setCustomerResults(data || []);
       setSearching(false);
@@ -191,7 +192,7 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
                         style={{ margin: 0 }}
                         value={customerQuery}
                         onChange={(e) => searchCustomers(e.target.value)}
-                        placeholder="Search by phone…"
+                        placeholder="Search by phone or name…"
                       />
                       {customerQuery.trim() !== "" && (
                         <ul className="ov-dropdown-menu" style={{ position: "absolute" }}>
