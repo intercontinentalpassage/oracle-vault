@@ -67,7 +67,7 @@ export default function AgentCatalog() {
       if (!customerId) {
         const { data: newCustomer, error: custError } = await supabase
           .from("customers")
-          .insert({ phone, name: soldModal.name.trim() || null })
+          .insert({ phone, name: soldModal.name.trim() || null, agent_id: agentId })
           .select()
           .single();
         if (custError) throw custError;

@@ -81,8 +81,11 @@ Tickets -> "Archived" filter surfaces these.
 
 ### `customers`
 Created automatically the first time a purchase request is approved (or
-manually by Admin). Looked up by phone, never by login — customers don't
-have Supabase Auth accounts.
+manually by Admin, or by an Agent in their own My customers page — either
+directly, or when they mark one of their tickets sold). Looked up by
+phone, never by login — customers don't have Supabase Auth accounts.
+`agent_id` (nullable) marks which agent first added/claimed that
+customer; the record itself is still shared/global, not agent-exclusive.
 
 ### `purchase_requests`
 A customer's checkout submission (website, agent shop, or Telegram bot).
