@@ -11,6 +11,8 @@ export default function AgentCatalog() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState({});
+  const [soldModal, setSoldModal] = useState(null); // { ticket, phone, name }
+  const [saving, setSaving] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -44,6 +46,56 @@ export default function AgentCatalog() {
       return next;
     });
     load();
+  }
+
+  async function confirmMarkSold() {
+    if (!soldModal) return;
+    const phone = soldModal.phone.trim();
+    if (!phone) {
+      setError("Enter the customer's phone number.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      const { data: existingCustomer } = await supabase
+        .from("customers")
+        .select("id")
+        .eq("phone", phone)
+        .maybeSingle();
+      let customerId = existingCustomer?.id;
+      if (!customerId) {
+        const { data: newCustomer, error: custError } = await supabase
+          .from("customers")
+          .insert({ phone, name: soldModal.name.trim() || null })
+          .select()
+          .single();
+        if (custError) throw custError;
+        customerId = newCustomer.id;
+      }
+
+      const { error: saleError } = await supabase.from("sales").insert({
+        ticket_id: soldModal.ticket.id,
+        customer_id: customerId,
+        customer_phone: phone,
+        agent_id: agentId,
+        price: soldModal.ticket.price,
+      });
+      if (saleError) throw saleError;
+
+      const { error: ticketError } = await supabase
+        .from("tickets")
+        .update({ status: "sold" })
+        .eq("id", soldModal.ticket.id);
+      if (ticketError) throw ticketError;
+
+      setSoldModal(null);
+      load();
+    } catch (e) {
+      setError(e.message || String(e));
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -93,11 +145,63 @@ export default function AgentCatalog() {
                       Save
                     </button>
                   )}
+                  {tk.status === "available" && (
+                    <button
+                      className="ov-btn-sm"
+                      style={{ marginLeft: 6 }}
+                      onClick={() => setSoldModal({ ticket: tk, phone: "", name: "" })}
+                    >
+                      Mark sold
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
           </tbody>
         </table></div>
+      )}
+
+      {soldModal && (
+        <div className="ov-summary-overlay" onClick={() => !saving && setSoldModal(null)} style={{ position: "fixed" }}>
+          <div className="ov-summary-wrap" style={{ maxWidth: 360 }} onClick={(e) => e.stopPropagation()}>
+            <div className="ov-summary-card">
+              <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>
+                Mark {soldModal.ticket.number} as sold
+              </div>
+              <p style={{ fontSize: 13, color: "#5A6560", marginTop: 0, marginBottom: 14 }}>
+                Enter the customer's details. A new customer is created automatically if this phone number hasn't
+                bought from you before.
+              </p>
+
+              <label style={{ display: "block", marginBottom: 10 }}>
+                Phone
+                <input
+                  className="ov-input"
+                  value={soldModal.phone}
+                  onChange={(e) => setSoldModal((prev) => ({ ...prev, phone: e.target.value }))}
+                  placeholder="09xxxxxxxx"
+                />
+              </label>
+              <label style={{ display: "block" }}>
+                Name (optional)
+                <input
+                  className="ov-input"
+                  value={soldModal.name}
+                  onChange={(e) => setSoldModal((prev) => ({ ...prev, name: e.target.value }))}
+                />
+              </label>
+
+              {error && <p style={{ color: "#B23A2E", fontSize: 13, marginTop: 12 }}>{error}</p>}
+
+              <button className="ov-btn-primary" style={{ width: "100%", marginTop: 16 }} onClick={confirmMarkSold} disabled={saving}>
+                {saving ? "Saving…" : "Mark as sold"}
+              </button>
+              <button className="ov-btn-sm" style={{ width: "100%", marginTop: 8 }} onClick={() => setSoldModal(null)} disabled={saving}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

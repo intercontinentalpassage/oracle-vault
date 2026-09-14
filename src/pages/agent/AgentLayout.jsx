@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, Navigate, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { useSessionProfile } from "../../lib/useSessionProfile";
@@ -25,6 +25,17 @@ export default function AgentLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [agentSlug, setAgentSlug] = useState(null);
+
+  useEffect(() => {
+    if (!profile?.agent_id) return;
+    supabase
+      .from("agents")
+      .select("slug")
+      .eq("id", profile.agent_id)
+      .single()
+      .then(({ data }) => setAgentSlug(data?.slug || null));
+  }, [profile?.agent_id]);
 
   if (loading) return null;
   if (!session) return <Navigate to="/login" replace />;
@@ -62,6 +73,11 @@ export default function AgentLayout() {
         <a href="#/" className="ov-admin-nav-link back">
           ← Storefront
         </a>
+        {agentSlug && (
+          <a href={`#/shop/${agentSlug}`} target="_blank" rel="noopener noreferrer" className="ov-admin-nav-link">
+            View my store ↗
+          </a>
+        )}
         {NAV.map((item) => (
           <NavLink
             key={item.to}
