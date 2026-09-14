@@ -11,14 +11,35 @@ export default function AdminPurchaseRequests() {
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState(null);
   const [statusFilter, setStatusFilter] = useState("pending");
+  const [selections, setSelections] = useState({});
+  const [groups, setGroups] = useState([]);
+  const [groupReassignments, setGroupReassignments] = useState({});
+
+  function getSelected(req) {
+    return selections[req.id] || new Set(req.ticket_ids || []);
+  }
+
+  function toggleTicketSelection(req, ticketId) {
+    setSelections((prev) => {
+      const current = new Set(prev[req.id] || req.ticket_ids || []);
+      if (current.has(ticketId)) current.delete(ticketId);
+      else current.add(ticketId);
+      return { ...prev, [req.id]: current };
+    });
+  }
+
+  function getGroupChoice(ticketId) {
+    return groupReassignments[ticketId] ?? ticketsById[ticketId]?.group_key ?? "";
+  }
 
   async function load() {
     setLoading(true);
     setError("");
-    const { data: reqs, error: reqError } = await supabase
-      .from("purchase_requests")
-      .select("*")
-      .order("created_at", { ascending: false });
+    const [{ data: reqs, error: reqError }, { data: grps }] = await Promise.all([
+      supabase.from("purchase_requests").select("*").order("created_at", { ascending: false }),
+      supabase.from("groups").select("*").order("sort_order"),
+    ]);
+    setGroups(grps || []);
     if (reqError) {
       setError(reqError.message);
       setLoading(false);
@@ -41,6 +62,8 @@ export default function AdminPurchaseRequests() {
   }, []);
 
   async function approve(req) {
+    const selectedIds = [...getSelected(req)];
+    if (selectedIds.length === 0) return;
     setBusyId(req.id);
     setError("");
     try {
@@ -64,16 +87,17 @@ export default function AdminPurchaseRequests() {
         customerId = newCustomer.id;
       }
 
-      // Mark tickets sold.
+      // Mark only the approved tickets sold — anything left unchecked simply
+      // stays "available", same as any other single ticket.
       const { error: ticketError } = await supabase
         .from("tickets")
         .update({ status: "sold" })
-        .in("id", req.ticket_ids);
+        .in("id", selectedIds);
       if (ticketError) throw ticketError;
 
-      // Record a sale row per ticket.
+      // Record a sale row per approved ticket, using the original per-ticket price.
       const perTicketPrice = req.ticket_ids.length ? req.total / req.ticket_ids.length : 0;
-      const saleRows = req.ticket_ids.map((ticketId) => ({
+      const saleRows = selectedIds.map((ticketId) => ({
         ticket_id: ticketId,
         customer_id: customerId,
         customer_phone: req.customer_phone,
@@ -83,13 +107,43 @@ export default function AdminPurchaseRequests() {
       const { error: saleError } = await supabase.from("sales").insert(saleRows);
       if (saleError) throw saleError;
 
-      // Mark the request confirmed.
+      // The request itself is confirmed for exactly what was approved —
+      // any unchecked tickets drop out of it and go back to being ordinary
+      // available singles, un-tied to this (or any) request. If the admin
+      // picked a different group for any of them, move them there too.
+      const leftoverIds = (req.ticket_ids || []).filter((id) => !selectedIds.includes(id));
+      const leftoverByGroup = {};
+      leftoverIds.forEach((id) => {
+        const group = getGroupChoice(id);
+        if (!leftoverByGroup[group]) leftoverByGroup[group] = [];
+        leftoverByGroup[group].push(id);
+      });
+      for (const [group, ids] of Object.entries(leftoverByGroup)) {
+        const { error: groupError } = await supabase.from("tickets").update({ group_key: group }).in("id", ids);
+        if (groupError) throw groupError;
+      }
+
       const { error: reqUpdateError } = await supabase
         .from("purchase_requests")
-        .update({ status: "confirmed", decided_by: userId })
+        .update({
+          status: "confirmed",
+          decided_by: userId,
+          ticket_ids: selectedIds,
+          total: perTicketPrice * selectedIds.length,
+        })
         .eq("id", req.id);
       if (reqUpdateError) throw reqUpdateError;
 
+      setSelections((prev) => {
+        const next = { ...prev };
+        delete next[req.id];
+        return next;
+      });
+      setGroupReassignments((prev) => {
+        const next = { ...prev };
+        leftoverIds.forEach((id) => delete next[id]);
+        return next;
+      });
       load();
     } catch (e) {
       setError(e.message || String(e));
@@ -151,20 +205,56 @@ export default function AdminPurchaseRequests() {
               </div>
 
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "12px 0" }}>
-                {(req.ticket_ids || []).map((id) => (
-                  <span
-                    key={id}
-                    style={{
-                      fontFamily: "'Space Mono', monospace",
-                      fontSize: 13,
-                      background: "#F4F8F6",
-                      padding: "4px 10px",
-                      borderRadius: 8,
-                    }}
-                  >
-                    {ticketsById[id]?.number || id.slice(0, 8)}
-                  </span>
-                ))}
+                {(req.ticket_ids || []).map((id) => {
+                  const isPending = req.status === "pending";
+                  const checked = isPending ? getSelected(req).has(id) : true;
+                  return (
+                    <div
+                      key={id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        background: "#F4F8F6",
+                        padding: "4px 10px",
+                        borderRadius: 8,
+                        opacity: isPending && !checked ? 0.7 : 1,
+                      }}
+                    >
+                      <label
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          fontFamily: "'Space Mono', monospace",
+                          fontSize: 13,
+                          cursor: isPending ? "pointer" : "default",
+                        }}
+                      >
+                        {isPending && (
+                          <input type="checkbox" checked={checked} onChange={() => toggleTicketSelection(req, id)} />
+                        )}
+                        {ticketsById[id]?.number || id.slice(0, 8)}
+                      </label>
+                      {isPending && !checked && (
+                        <select
+                          className="ov-input"
+                          style={{ margin: 0, padding: "2px 6px", fontSize: 11, width: "auto" }}
+                          value={getGroupChoice(id)}
+                          onChange={(e) =>
+                            setGroupReassignments((prev) => ({ ...prev, [id]: e.target.value }))
+                          }
+                        >
+                          {groups.map((g) => (
+                            <option key={g.key} value={g.key}>
+                              {g.label}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
 
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -174,8 +264,12 @@ export default function AdminPurchaseRequests() {
                     <button className="ov-btn-sm danger" disabled={busyId === req.id} onClick={() => reject(req)}>
                       Reject
                     </button>
-                    <button className="ov-btn-sm primary" disabled={busyId === req.id} onClick={() => approve(req)}>
-                      {busyId === req.id ? "Approving…" : "Approve"}
+                    <button
+                      className="ov-btn-sm primary"
+                      disabled={busyId === req.id || getSelected(req).size === 0}
+                      onClick={() => approve(req)}
+                    >
+                      {busyId === req.id ? "Approving…" : `Approve (${getSelected(req).size}/${(req.ticket_ids || []).length})`}
                     </button>
                   </div>
                 )}

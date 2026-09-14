@@ -12,6 +12,7 @@ export default function AdminTickets() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [agentFilter, setAgentFilter] = useState("");
   const [search, setSearch] = useState("");
 
   const [bulkNumbers, setBulkNumbers] = useState("");
@@ -127,6 +128,29 @@ export default function AdminTickets() {
     load();
   }
 
+  async function splitTicket(tk) {
+    if (tk.status !== "available") return;
+    if (!confirm(`Split ${tk.number} into 2 single tickets at ${currency}${(Number(tk.price) || 0) / 2} each?`)) return;
+    setError("");
+    const halfPrice = (Number(tk.price) || 0) / 2;
+    try {
+      const { error: updateError } = await supabase.from("tickets").update({ price: halfPrice }).eq("id", tk.id);
+      if (updateError) throw updateError;
+      const { error: insertError } = await supabase.from("tickets").insert({
+        number: tk.number,
+        group_key: tk.group_key,
+        price: halfPrice,
+        status: "available",
+        draw_id: tk.draw_id,
+        agent_id: tk.agent_id,
+      });
+      if (insertError) throw insertError;
+      load();
+    } catch (e) {
+      setError(e.message || String(e));
+    }
+  }
+
   function toggleSelected(id) {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -195,7 +219,13 @@ export default function AdminTickets() {
     (statusFilter === "archived"
       ? tickets.filter(isExpired)
       : (statusFilter ? tickets.filter((t) => t.status === statusFilter) : tickets).filter((t) => !isExpired(t))
-    ).filter((t) => !search.trim() || t.number.includes(search.trim()));
+    )
+      .filter((t) => !search.trim() || t.number.includes(search.trim()))
+      .filter((t) => {
+        if (!agentFilter) return true;
+        if (agentFilter === "none") return !t.agent_id;
+        return t.agent_id === agentFilter;
+      });
 
   const allFilteredSelected = filtered.length > 0 && filtered.every((tk) => selected.has(tk.id));
   function toggleSelectAll() {
@@ -350,6 +380,15 @@ export default function AdminTickets() {
             <option value="sold">Sold</option>
             <option value="archived">Archived (past draw date)</option>
           </select>
+          <select className="ov-input" style={{ width: 180, marginTop: 0 }} value={agentFilter} onChange={(e) => setAgentFilter(e.target.value)}>
+            <option value="">All (any/no agent)</option>
+            <option value="none">No agent (storefront)</option>
+            {agents.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
           <input
             className="ov-input"
             style={{ width: 180, marginTop: 0 }}
@@ -457,6 +496,11 @@ export default function AdminTickets() {
                   </select>
                 </td>
                 <td style={{ display: "flex", gap: 6 }}>
+                  {tk.status === "available" && (
+                    <button className="ov-btn-sm" onClick={() => splitTicket(tk)}>
+                      Split
+                    </button>
+                  )}
                   {tk.status !== "sold" && (
                     <button className="ov-btn-sm" onClick={() => updateTicket(tk.id, { status: "sold" })}>
                       Mark sold
