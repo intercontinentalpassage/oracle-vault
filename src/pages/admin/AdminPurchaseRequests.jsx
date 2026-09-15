@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { getCurrencySymbol, useSiteSettingsVersion } from "../../lib/siteSettingsStore";
 import Dropdown from "../../components/Dropdown";
@@ -11,6 +11,7 @@ export default function AdminPurchaseRequests() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState(null);
+  const inFlightRef = useRef(new Set());
   const [statusFilter, setStatusFilter] = useState("pending");
   const [selections, setSelections] = useState({});
   const [groups, setGroups] = useState([]);
@@ -64,8 +65,13 @@ export default function AdminPurchaseRequests() {
   }, []);
 
   async function approve(req) {
+    if (inFlightRef.current.has(req.id)) return;
+    inFlightRef.current.add(req.id);
     const selectedIds = [...getSelected(req)];
-    if (selectedIds.length === 0) return;
+    if (selectedIds.length === 0) {
+      inFlightRef.current.delete(req.id);
+      return;
+    }
     setBusyId(req.id);
     setError("");
     try {
@@ -176,6 +182,7 @@ export default function AdminPurchaseRequests() {
       setError(e.message || String(e));
     } finally {
       setBusyId(null);
+      inFlightRef.current.delete(req.id);
     }
   }
 
