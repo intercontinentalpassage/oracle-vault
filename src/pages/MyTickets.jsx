@@ -74,6 +74,9 @@ export default function MyTickets() {
             <p style={{ color: "#5A6560", marginTop: 24 }}>{t(lang, "noPurchasesFound")}</p>
           ) : (
             <div style={{ marginTop: 20 }}>
+              {results[0]?.customer_name && (
+                <p style={{ fontSize: 15, fontWeight: 700, marginBottom: 12 }}>{results[0].customer_name}</p>
+              )}
               {results.map((r) => (
                 <div key={r.id} className="ov-cart-item">
                   <div>

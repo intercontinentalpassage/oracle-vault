@@ -149,8 +149,9 @@ on `purchase_requests` plus a safe lookup function (see below).
 
 - **`lookup_my_tickets(p_phone text)`** — the only way "My Tickets"
   reads customer data. Returns *only* that phone number's own purchase
-  requests and sales, `security definer`, callable by `anon`. This
-  exists specifically so the anon key can never be used to browse other
+  requests and sales (including their `customer_name` from `customers`,
+  if set), `security definer`, callable by `anon`. This exists
+  specifically so the anon key can never be used to browse other
   customers' purchase history.
 
 ## Storage buckets
