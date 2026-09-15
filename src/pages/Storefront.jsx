@@ -195,7 +195,7 @@ export default function Storefront() {
         <div className="ov-footer-inner">
           <span>{t(lang, "footerNotice")}</span>
           <div className="ov-footer-links">
-            <a href="#/login">{t(lang, "login")}</a>
+            {!staffProfile && <a href="#/login">{t(lang, "login")}</a>}
             <button
               type="button"
               className="primary ov-link-button"
