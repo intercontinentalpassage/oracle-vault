@@ -15,6 +15,7 @@ export default function AdminPurchaseRequests() {
   const [selections, setSelections] = useState({});
   const [groups, setGroups] = useState([]);
   const [groupReassignments, setGroupReassignments] = useState({});
+  const [clearing, setClearing] = useState(false);
 
   function getSelected(req) {
     return selections[req.id] || new Set(req.ticket_ids || []);
@@ -96,6 +97,31 @@ export default function AdminPurchaseRequests() {
         .in("id", selectedIds);
       if (ticketError) throw ticketError;
 
+      // Any OTHER pending request that also references one of these
+      // now-sold tickets loses that ticket automatically — if that leaves
+      // it with nothing, it's marked expired instead of staying stuck
+      // pending forever with no way to fulfill it.
+      const { data: otherPending } = await supabase
+        .from("purchase_requests")
+        .select("*")
+        .eq("status", "pending")
+        .neq("id", req.id)
+        .overlaps("ticket_ids", selectedIds);
+
+      for (const other of otherPending || []) {
+        const remaining = (other.ticket_ids || []).filter((id) => !selectedIds.includes(id));
+        const otherPerTicketPrice = other.ticket_ids.length ? other.total / other.ticket_ids.length : 0;
+        const { error: expireError } = await supabase
+          .from("purchase_requests")
+          .update({
+            ticket_ids: remaining,
+            total: otherPerTicketPrice * remaining.length,
+            status: remaining.length === 0 ? "expired" : "pending",
+          })
+          .eq("id", other.id);
+        if (expireError) throw expireError;
+      }
+
       // Record a sale row per approved ticket, using the original per-ticket price.
       const perTicketPrice = req.ticket_ids.length ? req.total / req.ticket_ids.length : 0;
       const saleRows = selectedIds.map((ticketId) => ({
@@ -169,6 +195,19 @@ export default function AdminPurchaseRequests() {
     load();
   }
 
+  async function clearExpired() {
+    if (!confirm("Permanently delete all expired requests? This can't be undone.")) return;
+    setClearing(true);
+    setError("");
+    const { error: deleteError } = await supabase.from("purchase_requests").delete().eq("status", "expired");
+    setClearing(false);
+    if (deleteError) {
+      setError(deleteError.message);
+      return;
+    }
+    load();
+  }
+
   const filtered = statusFilter ? requests.filter((r) => r.status === statusFilter) : requests;
 
   return (
@@ -181,9 +220,15 @@ export default function AdminPurchaseRequests() {
           <option value="pending">Pending</option>
           <option value="confirmed">Confirmed</option>
           <option value="rejected">Rejected</option>
+          <option value="expired">Expired</option>
           <option value="">All</option>
         </Dropdown>
         <span style={{ fontSize: 12, color: "#5A6560" }}>{filtered.length} requests</span>
+        {statusFilter === "expired" && filtered.length > 0 && (
+          <button className="ov-btn-sm danger" onClick={clearExpired} disabled={clearing}>
+            {clearing ? "Clearing…" : `Clear all expired (${filtered.length})`}
+          </button>
+        )}
       </div>
 
       {loading ? (
