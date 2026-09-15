@@ -23,17 +23,62 @@ export default function AdminAgents() {
   const [detailFor, setDetailFor] = useState(null);
   const [detailSales, setDetailSales] = useState([]);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [detailEditing, setDetailEditing] = useState({});
+  const [detailSelected, setDetailSelected] = useState(new Set());
+  const [detailBulkPrice, setDetailBulkPrice] = useState("");
 
   async function openDetail(agent) {
     setDetailFor(agent);
+    setDetailEditing({});
+    setDetailSelected(new Set());
+    setDetailBulkPrice("");
     setDetailLoading(true);
     const { data } = await supabase
       .from("sales")
-      .select("price, sold_at, customer_phone, tickets(number)")
+      .select("id, price, sold_at, customer_phone, tickets(number)")
       .eq("agent_id", agent.id)
       .order("sold_at", { ascending: false });
     setDetailSales(data || []);
     setDetailLoading(false);
+  }
+
+  function toggleDetailSelected(id) {
+    setDetailSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function saveDetailPrice(id) {
+    const value = detailEditing[id];
+    if (value === undefined) return;
+    const { error: updateError } = await supabase.from("sales").update({ price: Number(value) || 0 }).eq("id", id);
+    if (updateError) {
+      setError(updateError.message);
+      return;
+    }
+    setDetailSales((prev) => prev.map((s) => (s.id === id ? { ...s, price: Number(value) || 0 } : s)));
+    setDetailEditing((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }
+
+  async function applyDetailBulkPrice() {
+    if (detailSelected.size === 0 || detailBulkPrice.trim() === "") return;
+    const ids = [...detailSelected];
+    const newPrice = Number(detailBulkPrice) || 0;
+    const { error: updateError } = await supabase.from("sales").update({ price: newPrice }).in("id", ids);
+    if (updateError) {
+      setError(updateError.message);
+      return;
+    }
+    setDetailSales((prev) => prev.map((s) => (ids.includes(s.id) ? { ...s, price: newPrice } : s)));
+    setDetailBulkPrice("");
+    setDetailSelected(new Set());
   }
 
   const detailTotal = detailSales.reduce((sum, s) => sum + (Number(s.price) || 0), 0);
@@ -169,31 +214,62 @@ export default function AdminAgents() {
               ) : detailSales.length === 0 ? (
                 <p style={{ color: "#5A6560", fontSize: 13 }}>No sales yet.</p>
               ) : (
-                <div style={{ maxHeight: 320, overflowY: "auto" }}>
-                  {detailSales.map((s, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        padding: "8px 0",
-                        borderBottom: "1px solid #F0F3F1",
-                        fontSize: 14,
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontFamily: "'Space Mono', monospace" }}>{s.tickets?.number || "—"}</div>
-                        <div style={{ fontSize: 12, color: "#5A6560" }}>
-                          {s.customer_phone} · {new Date(s.sold_at).toLocaleDateString()}
-                        </div>
-                      </div>
-                      <div style={{ fontWeight: 600 }}>
-                        {detailCurrency}
-                        {Number(s.price).toLocaleString()}
-                      </div>
+                <>
+                  {detailSelected.size > 0 && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                      <input
+                        className="ov-input"
+                        style={{ margin: 0, width: 90, padding: "6px 8px", fontSize: 12 }}
+                        type="number"
+                        placeholder="Set price…"
+                        value={detailBulkPrice}
+                        onChange={(e) => setDetailBulkPrice(e.target.value)}
+                      />
+                      <button
+                        className="ov-btn-sm primary"
+                        onClick={applyDetailBulkPrice}
+                        disabled={detailBulkPrice.trim() === ""}
+                      >
+                        Apply to {detailSelected.size}
+                      </button>
                     </div>
-                  ))}
-                </div>
+                  )}
+                  <div style={{ maxHeight: 320, overflowY: "auto" }}>
+                    {detailSales.map((s) => (
+                      <div
+                        key={s.id}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          padding: "8px 0",
+                          borderBottom: "1px solid #F0F3F1",
+                          fontSize: 14,
+                        }}
+                      >
+                        <input type="checkbox" checked={detailSelected.has(s.id)} onChange={() => toggleDetailSelected(s.id)} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontFamily: "'Space Mono', monospace" }}>{s.tickets?.number || "—"}</div>
+                          <div style={{ fontSize: 12, color: "#5A6560" }}>
+                            {s.customer_phone} · {new Date(s.sold_at).toLocaleDateString()}
+                          </div>
+                        </div>
+                        <input
+                          className="ov-input"
+                          style={{ margin: 0, width: 80, padding: "6px 8px", fontSize: 12 }}
+                          type="number"
+                          value={detailEditing[s.id] ?? s.price ?? 0}
+                          onChange={(e) => setDetailEditing((prev) => ({ ...prev, [s.id]: e.target.value }))}
+                        />
+                        {detailEditing[s.id] !== undefined && (
+                          <button className="ov-btn-sm primary" onClick={() => saveDetailPrice(s.id)}>
+                            Save
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
 
               <div style={{ display: "flex", justifyContent: "space-between", marginTop: 14, paddingTop: 14, borderTop: "1px solid #E7EBE9" }}>

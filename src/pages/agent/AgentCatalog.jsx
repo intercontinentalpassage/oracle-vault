@@ -13,6 +13,30 @@ export default function AgentCatalog() {
   const [editing, setEditing] = useState({});
   const [soldModal, setSoldModal] = useState(null); // { ticket, phone, name }
   const [saving, setSaving] = useState(false);
+  const [selected, setSelected] = useState(new Set());
+  const [bulkPrice, setBulkPrice] = useState("");
+
+  function toggleSelected(id) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function setPriceForSelected() {
+    if (selected.size === 0 || bulkPrice.trim() === "") return;
+    const ids = [...selected];
+    const { error: updateError } = await supabase.from("tickets").update({ price: Number(bulkPrice) || 0 }).in("id", ids);
+    if (updateError) {
+      setError(updateError.message);
+      return;
+    }
+    setBulkPrice("");
+    setSelected(new Set());
+    load();
+  }
 
   async function load() {
     setLoading(true);
@@ -107,6 +131,22 @@ export default function AgentCatalog() {
 
       {error && <p style={{ color: "#B23A2E", fontSize: 13, marginBottom: 12 }}>{error}</p>}
 
+      {selected.size > 0 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+          <input
+            className="ov-input"
+            style={{ width: 100, marginTop: 0 }}
+            type="number"
+            placeholder="Set price…"
+            value={bulkPrice}
+            onChange={(e) => setBulkPrice(e.target.value)}
+          />
+          <button className="ov-btn-sm primary" onClick={setPriceForSelected} disabled={bulkPrice.trim() === ""}>
+            Apply to {selected.size} selected
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <p style={{ color: "#5A6560" }}>Loading…</p>
       ) : tickets.length === 0 ? (
@@ -115,6 +155,7 @@ export default function AgentCatalog() {
         <div className="ov-table-wrap"><table className="ov-table">
           <thead>
             <tr>
+              <th></th>
               <th>Number</th>
               <th>Group</th>
               <th>Status</th>
@@ -125,6 +166,9 @@ export default function AgentCatalog() {
           <tbody>
             {tickets.map((tk) => (
               <tr key={tk.id}>
+                <td>
+                  <input type="checkbox" checked={selected.has(tk.id)} onChange={() => toggleSelected(tk.id)} />
+                </td>
                 <td style={{ fontFamily: "'Space Mono', monospace" }}>{tk.number}</td>
                 <td>{groups.find((g) => g.key === tk.group_key)?.label || tk.group_key}</td>
                 <td>

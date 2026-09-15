@@ -28,6 +28,7 @@ export default function AdminTickets() {
   const [showNewDraw, setShowNewDraw] = useState(false);
 
   const [selected, setSelected] = useState(new Set());
+  const [selectedPrice, setSelectedPrice] = useState("");
   const [priceEdits, setPriceEdits] = useState({});
   const [batchAgentId, setBatchAgentId] = useState("");
   const [batchPrice, setBatchPrice] = useState("");
@@ -259,6 +260,20 @@ export default function AdminTickets() {
     load();
   }
 
+  async function setPriceForSelected() {
+    if (selected.size === 0 || selectedPrice.trim() === "") return;
+    setError("");
+    const ids = [...selected];
+    const { error: updateError } = await supabase.from("tickets").update({ price: Number(selectedPrice) || 0 }).in("id", ids);
+    if (updateError) {
+      setError(updateError.message);
+      return;
+    }
+    setSelectedPrice("");
+    setSelected(new Set());
+    load();
+  }
+
   const today = new Date().toISOString().slice(0, 10);
   const upcomingDraws = draws.filter((d) => d.draw_date >= today).sort((a, b) => (a.draw_date < b.draw_date ? -1 : 1));
   const drawDateById = {};
@@ -481,9 +496,22 @@ export default function AdminTickets() {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           {selected.size > 0 && (
-            <button className="ov-btn-sm danger" onClick={deleteSelected}>
-              Delete {selected.size} selected
-            </button>
+            <>
+              <input
+                className="ov-input"
+                style={{ width: 100, marginTop: 0 }}
+                type="number"
+                placeholder="Set price…"
+                value={selectedPrice}
+                onChange={(e) => setSelectedPrice(e.target.value)}
+              />
+              <button className="ov-btn-sm primary" onClick={setPriceForSelected} disabled={selectedPrice.trim() === ""}>
+                Apply to {selected.size} selected
+              </button>
+              <button className="ov-btn-sm danger" onClick={deleteSelected}>
+                Delete {selected.size} selected
+              </button>
+            </>
           )}
           <span style={{ fontSize: 12, color: "#5A6560" }}>{filtered.length} tickets</span>
         </div>

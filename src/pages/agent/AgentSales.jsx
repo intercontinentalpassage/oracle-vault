@@ -9,9 +9,14 @@ export default function AgentSales() {
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
   const [agentCurrency, setAgentCurrency] = useState(null);
+  const [editing, setEditing] = useState({});
+  const [selected, setSelected] = useState(new Set());
+  const [bulkPrice, setBulkPrice] = useState("");
+  const [error, setError] = useState("");
   const currency = agentCurrency || getCurrencySymbol();
 
-  useEffect(() => {
+  function load() {
+    setLoading(true);
     Promise.all([
       supabase
         .from("sales")
@@ -24,7 +29,49 @@ export default function AgentSales() {
       setAgentCurrency(agentRes.data?.currency_symbol || null);
       setLoading(false);
     });
+  }
+
+  useEffect(() => {
+    load();
   }, [agentId]);
+
+  function toggleSelected(id) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function savePrice(id) {
+    const value = editing[id];
+    if (value === undefined) return;
+    const { error: updateError } = await supabase.from("sales").update({ price: Number(value) || 0 }).eq("id", id);
+    if (updateError) {
+      setError(updateError.message);
+      return;
+    }
+    setEditing((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    load();
+  }
+
+  async function setPriceForSelected() {
+    if (selected.size === 0 || bulkPrice.trim() === "") return;
+    const ids = [...selected];
+    const { error: updateError } = await supabase.from("sales").update({ price: Number(bulkPrice) || 0 }).in("id", ids);
+    if (updateError) {
+      setError(updateError.message);
+      return;
+    }
+    setBulkPrice("");
+    setSelected(new Set());
+    load();
+  }
 
   const total = sales.reduce((sum, s) => sum + (Number(s.price) || 0), 0);
   const maxByDay = {};
@@ -72,25 +119,63 @@ export default function AgentSales() {
         </div>
       )}
 
+      {error && <p style={{ color: "#B23A2E", fontSize: 13, marginBottom: 12 }}>{error}</p>}
+
+      {selected.size > 0 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+          <input
+            className="ov-input"
+            style={{ width: 100, marginTop: 0 }}
+            type="number"
+            placeholder="Set price…"
+            value={bulkPrice}
+            onChange={(e) => setBulkPrice(e.target.value)}
+          />
+          <button className="ov-btn-sm primary" onClick={setPriceForSelected} disabled={bulkPrice.trim() === ""}>
+            Apply to {selected.size} selected
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <p style={{ color: "#5A6560" }}>Loading…</p>
       ) : (
         <div className="ov-table-wrap"><table className="ov-table">
           <thead>
             <tr>
+              <th></th>
               <th>Ticket</th>
               <th>Phone</th>
               <th>Price</th>
               <th>Date</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
             {sales.map((s) => (
               <tr key={s.id}>
+                <td>
+                  <input type="checkbox" checked={selected.has(s.id)} onChange={() => toggleSelected(s.id)} />
+                </td>
                 <td style={{ fontFamily: "'Space Mono', monospace" }}>{s.tickets?.number || "—"}</td>
                 <td>{s.customer_phone}</td>
-                <td>{currency}{Number(s.price || 0).toLocaleString()}</td>
+                <td>
+                  <input
+                    className="ov-input"
+                    style={{ margin: 0, padding: "6px 8px", width: 90, fontSize: 12 }}
+                    type="number"
+                    value={editing[s.id] ?? s.price ?? 0}
+                    onChange={(e) => setEditing((prev) => ({ ...prev, [s.id]: e.target.value }))}
+                  />
+                </td>
                 <td>{new Date(s.sold_at).toLocaleDateString()}</td>
+                <td>
+                  {editing[s.id] !== undefined && (
+                    <button className="ov-btn-sm primary" onClick={() => savePrice(s.id)}>
+                      Save
+                    </button>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
