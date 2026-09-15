@@ -18,6 +18,29 @@ export default function AdminSettings() {
   const currentCurrency = getCurrencySymbol();
   const displayedCurrency = currencyInput === null ? currentCurrency : currencyInput;
 
+  const [thankYouInput, setThankYouInput] = useState(null);
+  const [savingThankYou, setSavingThankYou] = useState(false);
+  const [thankYouSaved, setThankYouSaved] = useState(false);
+  const currentThankYou = getSiteSetting("invoice_thank_you") || "Thank you for your purchase!";
+  const displayedThankYou = thankYouInput === null ? currentThankYou : thankYouInput;
+
+  async function saveThankYou() {
+    const value = (displayedThankYou || "").trim();
+    setSavingThankYou(true);
+    setError("");
+    setThankYouSaved(false);
+    const { error: settingError } = await supabase
+      .from("site_settings")
+      .upsert({ key: "invoice_thank_you", value }, { onConflict: "key" });
+    setSavingThankYou(false);
+    if (settingError) {
+      setError(settingError.message);
+      return;
+    }
+    setSiteSetting("invoice_thank_you", value);
+    setThankYouSaved(true);
+  }
+
   const [uploadingBg, setUploadingBg] = useState(false);
   const [bgSaved, setBgSaved] = useState(false);
   const bgFileInputRef = useRef(null);
@@ -291,6 +314,36 @@ export default function AdminSettings() {
           </button>
         </div>
         {currencySaved && <p style={{ color: "#0B5C4A", fontSize: 13, marginTop: 8 }}>Currency updated.</p>}
+      </div>
+
+      <div className="ov-card" style={{ marginBottom: 20 }}>
+        <strong style={{ fontSize: 13 }}>Invoice thank-you message</strong>
+        <p style={{ fontSize: 12, color: "#5A6560", margin: "4px 0 12px" }}>
+          Shown as the footer on every printable/saveable invoice — customer purchase receipts and agent ticket
+          statements alike.
+        </p>
+        <div style={{ display: "flex", gap: 8, alignItems: "flex-end", maxWidth: 400 }}>
+          <label style={{ flex: 1 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "#5A6560" }}>Message</span>
+            <input
+              className="ov-input"
+              value={displayedThankYou}
+              onChange={(e) => {
+                setThankYouInput(e.target.value);
+                setThankYouSaved(false);
+              }}
+              placeholder="Thank you for your purchase!"
+            />
+          </label>
+          <button
+            className="ov-btn-sm primary"
+            onClick={saveThankYou}
+            disabled={savingThankYou || displayedThankYou === currentThankYou}
+          >
+            {savingThankYou ? "Saving…" : "Save"}
+          </button>
+        </div>
+        {thankYouSaved && <p style={{ color: "#0B5C4A", fontSize: 13, marginTop: 8 }}>Message updated.</p>}
       </div>
 
       <div className="ov-card" style={{ marginBottom: 20 }}>

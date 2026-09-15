@@ -6,7 +6,7 @@ import { useSessionProfile } from "../lib/useSessionProfile";
 import { getCurrencySymbol, useSiteSettingsVersion } from "../lib/siteSettingsStore";
 import CartSummaryCard from "./CartSummaryCard";
 
-export default function CartDrawer({ lang, open, onClose, agentId, currencyOverride }) {
+export default function CartDrawer({ lang, open, onClose, agentId, currencyOverride, shopName }) {
   const { cart, remove, clear } = useCart();
   const { profile: staffProfile } = useSessionProfile();
   const isStaff = staffProfile?.role === "admin" || staffProfile?.role === "agent";
@@ -269,6 +269,7 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
             phone={phone}
             name={name}
             currencyOverride={currencyOverride}
+            shopName={shopName}
             onClose={() => setShowSummary(false)}
           />
         )}

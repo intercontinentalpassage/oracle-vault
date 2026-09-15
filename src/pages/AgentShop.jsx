@@ -218,6 +218,7 @@ export default function AgentShop() {
         onClose={() => setCartOpen(false)}
         agentId={agent.id}
         currencyOverride={agent.currency_symbol}
+        shopName={agent.name}
       />
       <WinnerChecker />
     </div>

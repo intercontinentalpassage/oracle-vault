@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { toPng } from "html-to-image";
 import { supabase } from "../../lib/supabaseClient";
-import { getCurrencySymbol, useSiteSettingsVersion } from "../../lib/siteSettingsStore";
+import { getCurrencySymbol, getSiteSetting, useSiteSettingsVersion } from "../../lib/siteSettingsStore";
+import BrandBadge from "../../components/BrandBadge";
 
 function slugify(name) {
   return name
@@ -21,25 +23,50 @@ export default function AdminAgents() {
   const [saving, setSaving] = useState(false);
 
   const [detailFor, setDetailFor] = useState(null);
+  const [detailMode, setDetailMode] = useState("all"); // "all" tickets sent, or "sales" history
   const [detailSales, setDetailSales] = useState([]);
+  const [detailTickets, setDetailTickets] = useState([]);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailEditing, setDetailEditing] = useState({});
   const [detailSelected, setDetailSelected] = useState(new Set());
   const [detailBulkPrice, setDetailBulkPrice] = useState("");
+  const invoiceRef = useRef(null);
+  const [savingInvoice, setSavingInvoice] = useState(false);
 
   async function openDetail(agent) {
     setDetailFor(agent);
+    setDetailMode("all");
     setDetailEditing({});
     setDetailSelected(new Set());
     setDetailBulkPrice("");
     setDetailLoading(true);
-    const { data } = await supabase
-      .from("sales")
-      .select("id, price, sold_at, customer_phone, tickets(number)")
-      .eq("agent_id", agent.id)
-      .order("sold_at", { ascending: false });
-    setDetailSales(data || []);
+    const [salesRes, ticketsRes] = await Promise.all([
+      supabase
+        .from("sales")
+        .select("id, price, sold_at, customer_phone, tickets(number)")
+        .eq("agent_id", agent.id)
+        .order("sold_at", { ascending: false }),
+      supabase.from("tickets").select("id, number, price, status").eq("agent_id", agent.id).order("number"),
+    ]);
+    setDetailSales(salesRes.data || []);
+    setDetailTickets(ticketsRes.data || []);
     setDetailLoading(false);
+  }
+
+  async function saveInvoiceAsPhoto() {
+    if (!invoiceRef.current) return;
+    setSavingInvoice(true);
+    try {
+      const dataUrl = await toPng(invoiceRef.current, { pixelRatio: 2, backgroundColor: "#FFFFFF" });
+      const link = document.createElement("a");
+      link.download = `${detailFor?.name || "agent"}-tickets-${Date.now()}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch {
+      setError("Couldn't save the image — try again.");
+    } finally {
+      setSavingInvoice(false);
+    }
   }
 
   function toggleDetailSelected(id) {
@@ -81,7 +108,10 @@ export default function AdminAgents() {
     setDetailSelected(new Set());
   }
 
-  const detailTotal = detailSales.reduce((sum, s) => sum + (Number(s.price) || 0), 0);
+  const detailTotal =
+    detailMode === "all"
+      ? detailTickets.reduce((sum, tk) => sum + (Number(tk.price) || 0), 0)
+      : detailSales.reduce((sum, s) => sum + (Number(s.price) || 0), 0);
   const detailCurrency = detailFor?.currency_symbol || siteCurrency;
 
   async function load() {
@@ -203,14 +233,59 @@ export default function AdminAgents() {
       {detailFor && (
         <div className="ov-summary-overlay" onClick={() => setDetailFor(null)} style={{ position: "fixed" }}>
           <div className="ov-summary-wrap" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
-            <div className="ov-summary-card">
-              <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{detailFor.name}</div>
-              <p style={{ fontSize: 13, color: "#5A6560", marginTop: 0, marginBottom: 14 }}>
-                {detailFor.phone || "No phone on file"}
-              </p>
+            <div className="ov-summary-card" ref={invoiceRef}>
+              <div className="ov-summary-header">
+                <BrandBadge size={32} />
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 15 }}>{detailFor.name}</div>
+                  <div style={{ fontSize: 11, color: "#5A6560" }}>{detailFor.phone || "No phone on file"}</div>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 6, margin: "12px 0" }}>
+                <button
+                  className={`ov-btn-sm${detailMode === "all" ? " primary" : ""}`}
+                  onClick={() => setDetailMode("all")}
+                >
+                  All tickets sent
+                </button>
+                <button
+                  className={`ov-btn-sm${detailMode === "sales" ? " primary" : ""}`}
+                  onClick={() => setDetailMode("sales")}
+                >
+                  Sales history
+                </button>
+              </div>
 
               {detailLoading ? (
                 <p style={{ color: "#5A6560", fontSize: 13 }}>Loading…</p>
+              ) : detailMode === "all" ? (
+                detailTickets.length === 0 ? (
+                  <p style={{ color: "#5A6560", fontSize: 13 }}>No tickets assigned yet.</p>
+                ) : (
+                  <div style={{ maxHeight: 320, overflowY: "auto" }}>
+                    {detailTickets.map((tk) => (
+                      <div
+                        key={tk.id}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          padding: "8px 0",
+                          borderBottom: "1px solid #F0F3F1",
+                          fontSize: 14,
+                        }}
+                      >
+                        <span style={{ fontFamily: "'Space Mono', monospace" }}>
+                          {tk.number} <span style={{ fontSize: 11, color: "#5A6560" }}>({tk.status})</span>
+                        </span>
+                        <span>
+                          {detailCurrency}
+                          {Number(tk.price || 0).toLocaleString()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )
               ) : detailSales.length === 0 ? (
                 <p style={{ color: "#5A6560", fontSize: 13 }}>No sales yet.</p>
               ) : (
@@ -280,9 +355,25 @@ export default function AdminAgents() {
                 </strong>
               </div>
 
-              <button className="ov-btn-sm" style={{ width: "100%", marginTop: 16 }} onClick={() => setDetailFor(null)}>
+              {detailMode === "all" && (
+                <>
+                  <div className="ov-summary-divider" />
+                  <p style={{ textAlign: "center", fontSize: 12, color: "#5A6560", margin: 0 }}>
+                    {getSiteSetting("invoice_thank_you") || "Thank you for your purchase!"}
+                  </p>
+                </>
+              )}
+            </div>
+
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              <button className="ov-btn-sm" style={{ flex: 1 }} onClick={() => setDetailFor(null)}>
                 Close
               </button>
+              {detailMode === "all" && (
+                <button className="ov-btn-sm primary" style={{ flex: 1 }} onClick={saveInvoiceAsPhoto} disabled={savingInvoice}>
+                  {savingInvoice ? "Saving…" : "Save as photo"}
+                </button>
+              )}
             </div>
           </div>
         </div>

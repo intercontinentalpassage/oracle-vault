@@ -1,13 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
+import { toPng } from "html-to-image";
 import { supabase } from "../../lib/supabaseClient";
-import { getCurrencySymbol } from "../../lib/siteSettingsStore";
+import { getCurrencySymbol, getSiteSetting, useSiteSettingsVersion } from "../../lib/siteSettingsStore";
+import BrandBadge from "../../components/BrandBadge";
 
 export default function AgentCatalog() {
   const { agentId } = useOutletContext();
   const [tickets, setTickets] = useState([]);
   const [groups, setGroups] = useState([]);
   const [agentCurrency, setAgentCurrency] = useState(null);
+  const [agentName, setAgentName] = useState("");
+  const [showInvoice, setShowInvoice] = useState(false);
+  const invoiceRef = useRef(null);
+  const [savingInvoice, setSavingInvoice] = useState(false);
+  useSiteSettingsVersion();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState({});
@@ -43,12 +50,13 @@ export default function AgentCatalog() {
     const [ticketsRes, groupsRes, agentRes] = await Promise.all([
       supabase.from("tickets").select("*").eq("agent_id", agentId).order("number"),
       supabase.from("groups").select("*").order("sort_order"),
-      supabase.from("agents").select("currency_symbol").eq("id", agentId).single(),
+      supabase.from("agents").select("name, currency_symbol").eq("id", agentId).single(),
     ]);
     if (ticketsRes.error) setError(ticketsRes.error.message);
     setTickets(ticketsRes.data || []);
     setGroups(groupsRes.data || []);
     setAgentCurrency(agentRes.data?.currency_symbol || null);
+    setAgentName(agentRes.data?.name || "");
     setLoading(false);
   }
 
@@ -122,9 +130,35 @@ export default function AgentCatalog() {
     }
   }
 
+  async function saveInvoiceAsPhoto() {
+    if (!invoiceRef.current) return;
+    setSavingInvoice(true);
+    try {
+      const dataUrl = await toPng(invoiceRef.current, { pixelRatio: 2, backgroundColor: "#FFFFFF" });
+      const link = document.createElement("a");
+      link.download = `${agentName || "agent"}-tickets-${Date.now()}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch {
+      setError("Couldn't save the image — try again.");
+    } finally {
+      setSavingInvoice(false);
+    }
+  }
+
+  const invoiceCurrency = agentCurrency || getCurrencySymbol();
+  const invoiceTotal = tickets.reduce((sum, tk) => sum + (Number(tk.price) || 0), 0);
+
   return (
     <div>
-      <h1>My catalog</h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <h1>My catalog</h1>
+        {tickets.length > 0 && (
+          <button className="ov-btn-sm primary" onClick={() => setShowInvoice(true)}>
+            View invoice
+          </button>
+        )}
+      </div>
       <p style={{ fontSize: 13, color: "#5A6560", marginTop: -14, marginBottom: 20 }}>
         Tickets your admin has assigned to you. You can adjust the price shown on your shop page.
       </p>
@@ -242,6 +276,58 @@ export default function AgentCatalog() {
               </button>
               <button className="ov-btn-sm" style={{ width: "100%", marginTop: 8 }} onClick={() => setSoldModal(null)} disabled={saving}>
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showInvoice && (
+        <div className="ov-summary-overlay" onClick={() => setShowInvoice(false)}>
+          <div className="ov-summary-wrap" onClick={(e) => e.stopPropagation()}>
+            <div className="ov-summary-card" ref={invoiceRef}>
+              <div className="ov-summary-header">
+                <BrandBadge size={32} />
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 15 }}>{agentName || "Agent"}</div>
+                  <div style={{ fontSize: 11, color: "#5A6560" }}>{new Date().toLocaleString()}</div>
+                </div>
+              </div>
+
+              <div className="ov-summary-divider" />
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 360, overflowY: "auto" }}>
+                {tickets.map((tk) => (
+                  <div key={tk.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
+                    <span style={{ fontFamily: "'Space Mono', monospace", letterSpacing: "0.05em" }}>
+                      {tk.number} <span style={{ fontSize: 11, color: "#5A6560" }}>({tk.status})</span>
+                    </span>
+                    <span>{invoiceCurrency}{Number(tk.price || 0).toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="ov-summary-divider" />
+
+              <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: 16 }}>
+                <span>Total</span>
+                <span style={{ fontFamily: "'Space Mono', monospace" }}>
+                  {invoiceCurrency}{invoiceTotal.toLocaleString()}
+                </span>
+              </div>
+
+              <div className="ov-summary-divider" />
+              <p style={{ textAlign: "center", fontSize: 12, color: "#5A6560", margin: 0 }}>
+                {getSiteSetting("invoice_thank_you") || "Thank you for your purchase!"}
+              </p>
+            </div>
+
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              <button className="ov-btn-sm" style={{ flex: 1 }} onClick={() => setShowInvoice(false)}>
+                Close
+              </button>
+              <button className="ov-btn-sm primary" style={{ flex: 1 }} onClick={saveInvoiceAsPhoto} disabled={savingInvoice}>
+                {savingInvoice ? "Saving…" : "Save as photo"}
               </button>
             </div>
           </div>

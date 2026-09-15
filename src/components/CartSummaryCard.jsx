@@ -1,9 +1,10 @@
 import { useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { t } from "../lib/i18n";
-import { getCurrencySymbol, useSiteSettingsVersion } from "../lib/siteSettingsStore";
+import { getCurrencySymbol, getSiteSetting, useSiteSettingsVersion } from "../lib/siteSettingsStore";
+import BrandBadge from "./BrandBadge";
 
-export default function CartSummaryCard({ lang, cart, total, phone, name, onClose, currencyOverride }) {
+export default function CartSummaryCard({ lang, cart, total, phone, name, onClose, currencyOverride, shopName }) {
   const cardRef = useRef(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -32,9 +33,9 @@ export default function CartSummaryCard({ lang, cart, total, phone, name, onClos
       <div className="ov-summary-wrap" onClick={(e) => e.stopPropagation()}>
         <div className="ov-summary-card" ref={cardRef}>
           <div className="ov-summary-header">
-            <div className="ov-brand-badge">88</div>
+            <BrandBadge size={32} />
             <div>
-              <div style={{ fontWeight: 700, fontSize: 15 }}>Oracle Vault</div>
+              <div style={{ fontWeight: 700, fontSize: 15 }}>{shopName || "Oracle Vault"}</div>
               <div style={{ fontSize: 11, color: "#5A6560" }}>{new Date().toLocaleString()}</div>
             </div>
           </div>
@@ -63,6 +64,11 @@ export default function CartSummaryCard({ lang, cart, total, phone, name, onClos
               {phone && <div>{phone}</div>}
             </div>
           )}
+
+          <div className="ov-summary-divider" />
+          <p style={{ textAlign: "center", fontSize: 12, color: "#5A6560", margin: 0 }}>
+            {getSiteSetting("invoice_thank_you") || "Thank you for your purchase!"}
+          </p>
         </div>
 
         {error && <p style={{ color: "#B23A2E", fontSize: 12, marginTop: 8, textAlign: "center" }}>{error}</p>}
