@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
+import { useSessionProfile } from "../lib/useSessionProfile";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -8,6 +9,13 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { loading: sessionLoading, profile } = useSessionProfile();
+
+  useEffect(() => {
+    if (!sessionLoading && profile) {
+      navigate(profile.role === "agent" ? "/agent" : "/admin", { replace: true });
+    }
+  }, [sessionLoading, profile, navigate]);
 
   async function submit(e) {
     e.preventDefault();
@@ -29,6 +37,7 @@ export default function Login() {
 
   return (
     <div className="ov-page" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
+      {sessionLoading || profile ? null : (
       <form onSubmit={submit} style={{ width: "min(360px, 90vw)" }}>
         <h1 style={{ fontSize: 20 }}>Staff login</h1>
         <label style={{ fontSize: 13, fontWeight: 600 }}>
@@ -53,6 +62,7 @@ export default function Login() {
           <Link to="/">← Back to storefront</Link>
         </p>
       </form>
+      )}
     </div>
   );
 }
