@@ -141,6 +141,13 @@ export default function AgentSettings() {
           maxLength={5}
           style={{ maxWidth: 120 }}
         />
+        <div>
+          <button className="ov-btn-sm primary" onClick={save} disabled={saving} style={{ marginTop: 12 }}>
+            {saving ? "Saving…" : "Save"}
+          </button>
+          {error && <p style={{ color: "#B23A2E", fontSize: 13, marginTop: 8 }}>{error}</p>}
+          {saved && <p style={{ color: "#0B5C4A", fontSize: 13, marginTop: 8 }}>Saved.</p>}
+        </div>
       </div>
 
       <div className="ov-card" style={{ maxWidth: 480 }}>
