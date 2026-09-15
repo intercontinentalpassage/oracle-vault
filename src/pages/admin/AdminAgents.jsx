@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import { getCurrencySymbol, useSiteSettingsVersion } from "../../lib/siteSettingsStore";
 
 function slugify(name) {
   return name
@@ -10,12 +11,33 @@ function slugify(name) {
 }
 
 export default function AdminAgents() {
+  useSiteSettingsVersion();
+  const siteCurrency = getCurrencySymbol();
   const [agents, setAgents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const [detailFor, setDetailFor] = useState(null);
+  const [detailSales, setDetailSales] = useState([]);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  async function openDetail(agent) {
+    setDetailFor(agent);
+    setDetailLoading(true);
+    const { data } = await supabase
+      .from("sales")
+      .select("price, sold_at, customer_phone, tickets(number)")
+      .eq("agent_id", agent.id)
+      .order("sold_at", { ascending: false });
+    setDetailSales(data || []);
+    setDetailLoading(false);
+  }
+
+  const detailTotal = detailSales.reduce((sum, s) => sum + (Number(s.price) || 0), 0);
+  const detailCurrency = detailFor?.currency_symbol || siteCurrency;
 
   async function load() {
     setLoading(true);
@@ -105,7 +127,7 @@ export default function AdminAgents() {
           </thead>
           <tbody>
             {agents.map((a) => (
-              <tr key={a.id}>
+              <tr key={a.id} onClick={() => openDetail(a)} style={{ cursor: "pointer" }}>
                 <td>{a.name}</td>
                 <td>{a.phone || "—"}</td>
                 <td>
@@ -117,7 +139,13 @@ export default function AdminAgents() {
                   </span>
                 </td>
                 <td>
-                  <button className="ov-btn-sm" onClick={() => toggleActive(a)}>
+                  <button
+                    className="ov-btn-sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleActive(a);
+                    }}
+                  >
                     {a.active ? "Deactivate" : "Activate"}
                   </button>
                 </td>
@@ -125,6 +153,63 @@ export default function AdminAgents() {
             ))}
           </tbody>
         </table></div>
+      )}
+
+      {detailFor && (
+        <div className="ov-summary-overlay" onClick={() => setDetailFor(null)} style={{ position: "fixed" }}>
+          <div className="ov-summary-wrap" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
+            <div className="ov-summary-card">
+              <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{detailFor.name}</div>
+              <p style={{ fontSize: 13, color: "#5A6560", marginTop: 0, marginBottom: 14 }}>
+                {detailFor.phone || "No phone on file"}
+              </p>
+
+              {detailLoading ? (
+                <p style={{ color: "#5A6560", fontSize: 13 }}>Loading…</p>
+              ) : detailSales.length === 0 ? (
+                <p style={{ color: "#5A6560", fontSize: 13 }}>No sales yet.</p>
+              ) : (
+                <div style={{ maxHeight: 320, overflowY: "auto" }}>
+                  {detailSales.map((s, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        padding: "8px 0",
+                        borderBottom: "1px solid #F0F3F1",
+                        fontSize: 14,
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontFamily: "'Space Mono', monospace" }}>{s.tickets?.number || "—"}</div>
+                        <div style={{ fontSize: 12, color: "#5A6560" }}>
+                          {s.customer_phone} · {new Date(s.sold_at).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <div style={{ fontWeight: 600 }}>
+                        {detailCurrency}
+                        {Number(s.price).toLocaleString()}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 14, paddingTop: 14, borderTop: "1px solid #E7EBE9" }}>
+                <strong style={{ fontSize: 14 }}>Total</strong>
+                <strong style={{ fontSize: 16 }}>
+                  {detailCurrency}
+                  {detailTotal.toLocaleString()}
+                </strong>
+              </div>
+
+              <button className="ov-btn-sm" style={{ width: "100%", marginTop: 16 }} onClick={() => setDetailFor(null)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
