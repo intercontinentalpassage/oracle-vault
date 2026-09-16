@@ -62,6 +62,18 @@ function parseGloDate(text) {
   return { iso, label };
 }
 
+// Some GLO PDFs' embedded fonts remap Thai combining marks (tone marks,
+// vowel signs above/below) to nonstandard Private Use Area codepoints
+// during text extraction, instead of their correct Unicode values —
+// e.g. the tone mark in "แบ่ง" can come out as U+F70A instead of U+0E48.
+// Since these marks sit between consonants without changing which word
+// it is for our purposes, header matching strips both the standard
+// combining-mark range and the PUA range from both sides, so matching
+// works whether a given PDF encodes marks correctly or not.
+function normalizeThaiForMatching(str) {
+  return str.replace(/[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/g, "").replace(/[\uE000-\uF8FF]/g, "");
+}
+
 // Parses the 6-digit (L6) game results only — the 3-digit game section
 // further down the slip isn't part of this app's ticket system.
 export async function parseGloPdf(file) {
@@ -72,13 +84,16 @@ export async function parseGloPdf(file) {
   // digit on the printed slip (e.g. "4 1 7 2 1 1") — collapse those
   // back into normal 6-digit numbers before extracting.
   const text = rawText.replace(/\b(\d)\s(\d)\s(\d)\s(\d)\s(\d)\s(\d)\b/g, "$1$2$3$4$5$6");
+  const normalizedText = normalizeThaiForMatching(text);
 
-  const l6Start = text.indexOf("ผลการออกรางวัลสลากกินแบ่งรัฐบาลหกหลัก");
-  const l6End = text.indexOf("ผลการออกรางวัลสลากกินแบ่งรัฐบาลตัวเลขสามหลัก");
+  const l6Start = normalizedText.indexOf(normalizeThaiForMatching("ผลการออกรางวัลสลากกินแบ่งรัฐบาลหกหลัก"));
+  const l6End = normalizedText.indexOf(normalizeThaiForMatching("ผลการออกรางวัลสลากกินแบ่งรัฐบาลตัวเลขสามหลัก"));
   if (l6Start === -1 || l6End === -1) {
     throw new Error("This doesn't look like a GLO 6-digit (L6) results PDF.");
   }
-  const section = text.slice(l6Start, l6End);
+  // Everything downstream only matches digit patterns, which tone-mark
+  // stripping never touches, so slicing the normalized text is safe.
+  const section = normalizedText.slice(l6Start, l6End);
 
   const rowMatch = section.match(/(\d{6})\s+(\d{3})\s+(\d{3})\s+(\d{3})\s+(\d{3})\s+(\d{2})\b/);
   if (!rowMatch) throw new Error("Couldn't find the first-prize row on this PDF.");
