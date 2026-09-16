@@ -33,6 +33,7 @@ export default function AdminTickets() {
   const [batchAgentId, setBatchAgentId] = useState("");
   const [batchPrice, setBatchPrice] = useState("");
   const [batchCurrency, setBatchCurrency] = useState("");
+  const [randomCount, setRandomCount] = useState("");
   const [batching, setBatching] = useState(false);
   const [splitModal, setSplitModal] = useState(null); // { ticket, priceA, groupA, priceB, groupB }
   const [splitting, setSplitting] = useState(false);
@@ -192,6 +193,7 @@ export default function AdminTickets() {
   }
 
   function toggleSelected(id) {
+    setRandomCount("");
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -201,11 +203,30 @@ export default function AdminTickets() {
   }
 
   async function sendBatchToAgent() {
-    if (!batchAgentId || selected.size === 0) return;
+    const useRandom = randomCount.trim() !== "";
+    if (!batchAgentId || (!useRandom && selected.size === 0)) return;
     setBatching(true);
     setError("");
     try {
-      const ids = tickets.filter((t) => selected.has(t.id) && t.status === "available" && !t.agent_id).map((t) => t.id);
+      let ids;
+      let shortBy = 0;
+      if (useRandom) {
+        const n = parseInt(randomCount, 10);
+        if (!n || n <= 0) {
+          setError("Enter a valid number of tickets.");
+          return;
+        }
+        const pool = tickets.filter((t) => t.status === "available" && !t.agent_id);
+        if (pool.length === 0) {
+          setError("No available, unassigned tickets to send.");
+          return;
+        }
+        const shuffled = [...pool].sort(() => Math.random() - 0.5);
+        ids = shuffled.slice(0, Math.min(n, pool.length)).map((t) => t.id);
+        shortBy = n - ids.length;
+      } else {
+        ids = tickets.filter((t) => selected.has(t.id) && t.status === "available" && !t.agent_id).map((t) => t.id);
+      }
       if (ids.length === 0) {
         setError("None of the selected tickets are eligible (must be available and unassigned).");
         return;
@@ -238,6 +259,10 @@ export default function AdminTickets() {
       setBatchAgentId("");
       setBatchPrice("");
       setBatchCurrency("");
+      setRandomCount("");
+      if (shortBy > 0) {
+        setError(`Only ${ids.length} eligible ticket(s) were available — sent all of them (${shortBy} short of the ${randomCount} requested).`);
+      }
       load();
     } catch (e) {
       setError(e.message || String(e));
@@ -412,8 +437,9 @@ export default function AdminTickets() {
         <strong style={{ fontSize: 13 }}>Send batch to agent</strong>
         <p style={{ fontSize: 12, color: "#5A6560", margin: "4px 0 12px" }}>
           Check tickets below and pick an agent — only available, unassigned ones among your selection actually get
-          sent (others are skipped), and this creates an invoice recording the handoff. Optionally set a new price
-          per ticket and/or the agent's shop currency before sending.
+          sent (others are skipped) — or skip picking manually and just enter a random amount to send. Either way
+          this creates an invoice recording the handoff. Optionally set a new price per ticket and/or the agent's
+          shop currency before sending.
         </p>
         <div className="ov-form-row" style={{ alignItems: "flex-end" }}>
           <label>
@@ -455,12 +481,30 @@ export default function AdminTickets() {
               placeholder={currency}
             />
           </label>
+          <label>
+            Or send random amount
+            <input
+              className="ov-input"
+              type="number"
+              min="1"
+              value={randomCount}
+              onChange={(e) => {
+                setRandomCount(e.target.value);
+                if (e.target.value.trim() !== "") setSelected(new Set());
+              }}
+              placeholder="e.g. 10"
+            />
+          </label>
           <button
             className="ov-btn-sm primary"
             onClick={sendBatchToAgent}
-            disabled={batching || !batchAgentId || selected.size === 0}
+            disabled={batching || !batchAgentId || (randomCount.trim() === "" && selected.size === 0)}
           >
-            {batching ? "Sending…" : `Send ${selected.size} selected`}
+            {batching
+              ? "Sending…"
+              : randomCount.trim() !== ""
+              ? `Send ${randomCount} random`
+              : `Send ${selected.size} selected`}
           </button>
         </div>
       </div>
