@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { getCurrencySymbol, useSiteSettingsVersion } from "../../lib/siteSettingsStore";
+import Dropdown from "../../components/Dropdown";
 
 export default function AdminCustomers() {
   useSiteSettingsVersion();
   const currency = getCurrencySymbol();
   const [customers, setCustomers] = useState([]);
+  const [agents, setAgents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
@@ -29,11 +31,23 @@ export default function AdminCustomers() {
     setDetailLoading(true);
     const { data } = await supabase
       .from("sales")
-      .select("id, price, sold_at, tickets(number)")
+      .select("id, price, sold_at, agent_id, tickets(number)")
       .eq("customer_phone", customer.phone)
       .order("sold_at", { ascending: false });
     setDetailSales(data || []);
     setDetailLoading(false);
+  }
+
+  async function moveToAgent(saleId, agentId) {
+    const { error: updateError } = await supabase
+      .from("sales")
+      .update({ agent_id: agentId || null })
+      .eq("id", saleId);
+    if (updateError) {
+      setError(updateError.message);
+      return;
+    }
+    setDetailSales((prev) => prev.map((s) => (s.id === saleId ? { ...s, agent_id: agentId || null } : s)));
   }
 
   function toggleDetailSelected(id) {
@@ -79,8 +93,12 @@ export default function AdminCustomers() {
 
   async function load() {
     setLoading(true);
-    const { data } = await supabase.from("customers").select("*").order("created_at", { ascending: false });
-    setCustomers(data || []);
+    const [customersRes, agentsRes] = await Promise.all([
+      supabase.from("customers").select("*").order("created_at", { ascending: false }),
+      supabase.from("agents").select("id, name").order("name"),
+    ]);
+    setCustomers(customersRes.data || []);
+    setAgents(agentsRes.data || []);
     setLoading(false);
   }
 
@@ -216,31 +234,47 @@ export default function AdminCustomers() {
                       <div
                         key={s.id}
                         style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
                           padding: "8px 0",
                           borderBottom: "1px solid #F0F3F1",
                           fontSize: 14,
                         }}
                       >
-                        <input type="checkbox" checked={detailSelected.has(s.id)} onChange={() => toggleDetailSelected(s.id)} />
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontFamily: "'Space Mono', monospace" }}>{s.tickets?.number || "—"}</div>
-                          <div style={{ fontSize: 12, color: "#5A6560" }}>{new Date(s.sold_at).toLocaleDateString()}</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <input type="checkbox" checked={detailSelected.has(s.id)} onChange={() => toggleDetailSelected(s.id)} />
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontFamily: "'Space Mono', monospace" }}>{s.tickets?.number || "—"}</div>
+                            <div style={{ fontSize: 12, color: "#5A6560" }}>{new Date(s.sold_at).toLocaleDateString()}</div>
+                          </div>
+                          <input
+                            className="ov-input"
+                            style={{ margin: 0, width: 80, padding: "6px 8px", fontSize: 12 }}
+                            type="number"
+                            value={detailEditing[s.id] ?? s.price ?? 0}
+                            onChange={(e) => setDetailEditing((prev) => ({ ...prev, [s.id]: e.target.value }))}
+                          />
+                          {detailEditing[s.id] !== undefined && (
+                            <button className="ov-btn-sm primary" onClick={() => saveDetailPrice(s.id)}>
+                              Save
+                            </button>
+                          )}
                         </div>
-                        <input
-                          className="ov-input"
-                          style={{ margin: 0, width: 80, padding: "6px 8px", fontSize: 12 }}
-                          type="number"
-                          value={detailEditing[s.id] ?? s.price ?? 0}
-                          onChange={(e) => setDetailEditing((prev) => ({ ...prev, [s.id]: e.target.value }))}
-                        />
-                        {detailEditing[s.id] !== undefined && (
-                          <button className="ov-btn-sm primary" onClick={() => saveDetailPrice(s.id)}>
-                            Save
-                          </button>
-                        )}
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, marginLeft: 24 }}>
+                          <span style={{ fontSize: 11, color: "#5A6560" }}>Agent:</span>
+                          <Dropdown
+                            className="ov-input"
+                            fit
+                            style={{ margin: 0, padding: "4px 8px", fontSize: 12 }}
+                            value={s.agent_id || ""}
+                            onChange={(e) => moveToAgent(s.id, e.target.value)}
+                          >
+                            <option value="">— none (customer) —</option>
+                            {agents.map((a) => (
+                              <option key={a.id} value={a.id}>
+                                {a.name}
+                              </option>
+                            ))}
+                          </Dropdown>
+                        </div>
                       </div>
                     ))}
                   </div>
