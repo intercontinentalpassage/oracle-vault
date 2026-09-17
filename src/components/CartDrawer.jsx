@@ -119,21 +119,14 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
           }}
         >
           <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{t(lang, "yourCart")}</h2>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            {cart.length > 0 && !sent && (
-              <button className="ov-link-btn" style={{ color: "#B23A2E" }} onClick={clear}>
-                {t(lang, "removeAll")}
-              </button>
-            )}
-            <button
-              className="ov-link-btn"
-              aria-label={t(lang, "closeCart")}
-              onClick={onClose}
-              style={{ fontSize: 22, lineHeight: 1, color: "#5A6560" }}
-            >
-              ×
-            </button>
-          </div>
+          <button
+            className="ov-link-btn"
+            aria-label={t(lang, "closeCart")}
+            onClick={onClose}
+            style={{ fontSize: 22, lineHeight: 1, color: "#5A6560" }}
+          >
+            ×
+          </button>
         </div>
 
         {sent ? (
@@ -168,6 +161,14 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
                 </div>
               ))}
             </div>
+
+            <button
+              className="ov-link-btn"
+              style={{ marginTop: 8, color: "#5A6560" }}
+              onClick={clear}
+            >
+              {t(lang, "removeAll")}
+            </button>
 
             <div
               style={{
