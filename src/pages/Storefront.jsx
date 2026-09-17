@@ -77,7 +77,7 @@ export default function Storefront() {
           return !d || d.draw_date >= today;
         });
         setTickets(visibleTickets);
-        const maxLen = Math.max(4, ...visibleTickets.map((tk) => tk.number.length));
+        const maxLen = Math.max(6, ...visibleTickets.map((tk) => tk.number.length));
         setDigits(Array(maxLen).fill(""));
       } catch (e) {
         if (!cancelled) setLoadError(e.message || String(e));

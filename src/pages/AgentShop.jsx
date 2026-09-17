@@ -84,7 +84,7 @@ export default function AgentShop() {
       });
       if (cancelled) return;
       setTickets(visibleTickets);
-      const maxLen = Math.max(4, ...visibleTickets.map((tk) => tk.number.length));
+      const maxLen = Math.max(6, ...visibleTickets.map((tk) => tk.number.length));
       setDigits(Array(maxLen).fill(""));
       setLoading(false);
     }
