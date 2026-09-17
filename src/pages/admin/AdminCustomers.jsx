@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { toPng } from "html-to-image";
 import { supabase } from "../../lib/supabaseClient";
-import { getCurrencySymbol, useSiteSettingsVersion } from "../../lib/siteSettingsStore";
+import { getCurrencySymbol, getSiteSetting, useSiteSettingsVersion } from "../../lib/siteSettingsStore";
 import Dropdown from "../../components/Dropdown";
+import BrandBadge from "../../components/BrandBadge";
 
 export default function AdminCustomers() {
   useSiteSettingsVersion();
@@ -90,6 +92,24 @@ export default function AdminCustomers() {
   }
 
   const detailTotal = detailSales.reduce((sum, s) => sum + (Number(s.price) || 0), 0);
+  const invoiceRef = useRef(null);
+  const [savingInvoice, setSavingInvoice] = useState(false);
+
+  async function saveInvoiceAsPhoto() {
+    if (!invoiceRef.current) return;
+    setSavingInvoice(true);
+    try {
+      const dataUrl = await toPng(invoiceRef.current, { pixelRatio: 2, backgroundColor: "#FFFFFF" });
+      const link = document.createElement("a");
+      link.download = `${detailFor?.name || detailFor?.phone || "customer"}-invoice-${Date.now()}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch {
+      setError("Couldn't save the image — try again.");
+    } finally {
+      setSavingInvoice(false);
+    }
+  }
 
   async function load() {
     setLoading(true);
@@ -198,100 +218,139 @@ export default function AdminCustomers() {
       {detailFor && (
         <div className="ov-summary-overlay" onClick={() => setDetailFor(null)} style={{ position: "fixed" }}>
           <div className="ov-summary-wrap" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
-            <div className="ov-summary-card">
-              <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>
-                {detailFor.name || detailFor.phone}
+            <div className="ov-summary-card" ref={invoiceRef}>
+              <div className="ov-summary-header">
+                <BrandBadge size={32} />
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 15 }}>Oracle Vault</div>
+                  <div style={{ fontSize: 11, color: "#5A6560" }}>{new Date().toLocaleString()}</div>
+                </div>
               </div>
-              <p style={{ fontSize: 13, color: "#5A6560", marginTop: 0, marginBottom: 14 }}>{detailFor.phone}</p>
+              <p style={{ fontSize: 13, color: "#5A6560", margin: "8px 0 0" }}>
+                {detailFor.name || detailFor.phone}
+                {detailFor.name ? ` · ${detailFor.phone}` : ""}
+              </p>
+
+              <div className="ov-summary-divider" />
 
               {detailLoading ? (
                 <p style={{ color: "#5A6560", fontSize: 13 }}>Loading…</p>
               ) : detailSales.length === 0 ? (
                 <p style={{ color: "#5A6560", fontSize: 13 }}>No purchases yet.</p>
               ) : (
-                <>
-                  {detailSelected.size > 0 && (
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                      <input
-                        className="ov-input"
-                        style={{ margin: 0, width: 90, padding: "6px 8px", fontSize: 12 }}
-                        type="number"
-                        placeholder="Set price…"
-                        value={detailBulkPrice}
-                        onChange={(e) => setDetailBulkPrice(e.target.value)}
-                      />
-                      <button
-                        className="ov-btn-sm primary"
-                        onClick={applyDetailBulkPrice}
-                        disabled={detailBulkPrice.trim() === ""}
-                      >
-                        Apply to {detailSelected.size}
-                      </button>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 320, overflowY: "auto" }}>
+                  {detailSales.map((s) => (
+                    <div key={s.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
+                      <span style={{ fontFamily: "'Space Mono', monospace" }}>
+                        {s.tickets?.number || "—"}{" "}
+                        <span style={{ fontSize: 11, color: "#5A6560" }}>
+                          ({new Date(s.sold_at).toLocaleDateString()})
+                        </span>
+                      </span>
+                      <span>{currency}{Number(s.price || 0).toLocaleString()}</span>
                     </div>
-                  )}
-                  <div style={{ maxHeight: 320, overflowY: "auto" }}>
-                    {detailSales.map((s) => (
-                      <div
-                        key={s.id}
-                        style={{
-                          padding: "8px 0",
-                          borderBottom: "1px solid #F0F3F1",
-                          fontSize: 14,
-                        }}
-                      >
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <input type="checkbox" checked={detailSelected.has(s.id)} onChange={() => toggleDetailSelected(s.id)} />
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontFamily: "'Space Mono', monospace" }}>{s.tickets?.number || "—"}</div>
-                            <div style={{ fontSize: 12, color: "#5A6560" }}>{new Date(s.sold_at).toLocaleDateString()}</div>
-                          </div>
-                          <input
-                            className="ov-input"
-                            style={{ margin: 0, width: 80, padding: "6px 8px", fontSize: 12 }}
-                            type="number"
-                            value={detailEditing[s.id] ?? s.price ?? 0}
-                            onChange={(e) => setDetailEditing((prev) => ({ ...prev, [s.id]: e.target.value }))}
-                          />
-                          {detailEditing[s.id] !== undefined && (
-                            <button className="ov-btn-sm primary" onClick={() => saveDetailPrice(s.id)}>
-                              Save
-                            </button>
-                          )}
-                        </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, marginLeft: 24 }}>
-                          <span style={{ fontSize: 11, color: "#5A6560" }}>Agent:</span>
-                          <Dropdown
-                            className="ov-input"
-                            fit
-                            style={{ margin: 0, padding: "4px 8px", fontSize: 12 }}
-                            value={s.agent_id || ""}
-                            onChange={(e) => moveToAgent(s.id, e.target.value)}
-                          >
-                            <option value="">— none (customer) —</option>
-                            {agents.map((a) => (
-                              <option key={a.id} value={a.id}>
-                                {a.name}
-                              </option>
-                            ))}
-                          </Dropdown>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </>
+                  ))}
+                </div>
               )}
 
-              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 14, paddingTop: 14, borderTop: "1px solid #E7EBE9" }}>
-                <strong style={{ fontSize: 14 }}>Total</strong>
-                <strong style={{ fontSize: 16 }}>
+              <div className="ov-summary-divider" />
+              <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: 16 }}>
+                <span>Total</span>
+                <span style={{ fontFamily: "'Space Mono', monospace" }}>
                   {currency}
                   {detailTotal.toLocaleString()}
-                </strong>
+                </span>
               </div>
 
-              <button className="ov-btn-sm" style={{ width: "100%", marginTop: 16 }} onClick={() => setDetailFor(null)}>
+              <div className="ov-summary-divider" />
+              <p style={{ textAlign: "center", fontSize: 12, color: "#5A6560", margin: 0 }}>
+                {getSiteSetting("invoice_thank_you") || "Thank you for your purchase!"}
+              </p>
+            </div>
+
+            {detailSales.length > 0 && (
+              <div className="ov-card" style={{ marginTop: 12 }}>
+                <strong style={{ fontSize: 12, color: "#5A6560" }}>Manage this customer's sales</strong>
+                {detailSelected.size > 0 && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
+                    <input
+                      className="ov-input"
+                      style={{ margin: 0, width: 90, padding: "6px 8px", fontSize: 12 }}
+                      type="number"
+                      placeholder="Set price…"
+                      value={detailBulkPrice}
+                      onChange={(e) => setDetailBulkPrice(e.target.value)}
+                    />
+                    <button
+                      className="ov-btn-sm primary"
+                      onClick={applyDetailBulkPrice}
+                      disabled={detailBulkPrice.trim() === ""}
+                    >
+                      Apply to {detailSelected.size}
+                    </button>
+                  </div>
+                )}
+                <div style={{ maxHeight: 240, overflowY: "auto", marginTop: 10 }}>
+                  {detailSales.map((s) => (
+                    <div
+                      key={s.id}
+                      style={{
+                        padding: "8px 0",
+                        borderBottom: "1px solid #F0F3F1",
+                        fontSize: 14,
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <input type="checkbox" checked={detailSelected.has(s.id)} onChange={() => toggleDetailSelected(s.id)} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontFamily: "'Space Mono', monospace" }}>{s.tickets?.number || "—"}</div>
+                          <div style={{ fontSize: 12, color: "#5A6560" }}>{new Date(s.sold_at).toLocaleDateString()}</div>
+                        </div>
+                        <input
+                          className="ov-input"
+                          style={{ margin: 0, width: 80, padding: "6px 8px", fontSize: 12 }}
+                          type="number"
+                          value={detailEditing[s.id] ?? s.price ?? 0}
+                          onChange={(e) => setDetailEditing((prev) => ({ ...prev, [s.id]: e.target.value }))}
+                        />
+                        {detailEditing[s.id] !== undefined && (
+                          <button className="ov-btn-sm primary" onClick={() => saveDetailPrice(s.id)}>
+                            Save
+                          </button>
+                        )}
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, marginLeft: 24 }}>
+                        <span style={{ fontSize: 11, color: "#5A6560" }}>Agent:</span>
+                        <Dropdown
+                          className="ov-input"
+                          fit
+                          style={{ margin: 0, padding: "4px 8px", fontSize: 12 }}
+                          value={s.agent_id || ""}
+                          onChange={(e) => moveToAgent(s.id, e.target.value)}
+                        >
+                          <option value="">— none (customer) —</option>
+                          {agents.map((a) => (
+                            <option key={a.id} value={a.id}>
+                              {a.name}
+                            </option>
+                          ))}
+                        </Dropdown>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              <button className="ov-btn-sm" style={{ flex: 1 }} onClick={() => setDetailFor(null)}>
                 Close
               </button>
+              {detailSales.length > 0 && (
+                <button className="ov-btn-sm primary" style={{ flex: 1 }} onClick={saveInvoiceAsPhoto} disabled={savingInvoice}>
+                  {savingInvoice ? "Saving…" : "Save as photo"}
+                </button>
+              )}
             </div>
           </div>
         </div>
