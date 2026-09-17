@@ -91,7 +91,7 @@ export default function Storefront() {
     };
   }, []);
 
-  const digitLength = digits.length || 4;
+  const digitLength = digits.length || 6;
   const availableCount = useMemo(() => tickets.filter((tk) => tk.status === "available").length, [tickets]);
   const matchCount = useMemo(() => {
     const filled = digits.filter(Boolean).length;
