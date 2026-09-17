@@ -313,7 +313,9 @@ export default function AdminSettings() {
             {savingCurrency ? "Saving…" : "Save"}
           </button>
         </div>
-        {currencySaved && <p style={{ color: "#0B5C4A", fontSize: 13, marginTop: 8 }}>Currency updated.</p>}
+        <div style={{ minHeight: 21, marginTop: 8 }}>
+          {currencySaved && <p style={{ color: "#0B5C4A", fontSize: 13, margin: 0 }}>Currency updated.</p>}
+        </div>
       </div>
 
       <div className="ov-card" style={{ marginBottom: 20 }}>
@@ -343,7 +345,9 @@ export default function AdminSettings() {
             {savingThankYou ? "Saving…" : "Save"}
           </button>
         </div>
-        {thankYouSaved && <p style={{ color: "#0B5C4A", fontSize: 13, marginTop: 8 }}>Message updated.</p>}
+        <div style={{ minHeight: 21, marginTop: 8 }}>
+          {thankYouSaved && <p style={{ color: "#0B5C4A", fontSize: 13, margin: 0 }}>Message updated.</p>}
+        </div>
       </div>
 
       <div className="ov-card" style={{ marginBottom: 20 }}>
