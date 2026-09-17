@@ -142,7 +142,12 @@ export default function AgentSettings() {
           style={{ maxWidth: 120 }}
         />
         <div>
-          <button className="ov-btn-sm primary" onClick={save} disabled={saving} style={{ marginTop: 12 }}>
+          <button
+            className="ov-btn-sm primary"
+            onClick={save}
+            disabled={saving}
+            style={{ marginTop: 12, width: 90, display: "inline-block", textAlign: "center" }}
+          >
             {saving ? "Saving…" : "Save"}
           </button>
           <div style={{ minHeight: 21, marginTop: 8 }}>
@@ -194,9 +199,16 @@ export default function AgentSettings() {
           </div>
         </div>
 
-        {error && <p style={{ color: "#B23A2E", fontSize: 13, marginTop: 8 }}>{error}</p>}
-        {saved && <p style={{ color: "#0B5C4A", fontSize: 13, marginTop: 8 }}>Saved.</p>}
-        <button className="ov-btn-sm primary" onClick={save} disabled={saving} style={{ marginTop: 12 }}>
+        <div style={{ minHeight: 21, marginTop: 8 }}>
+          {error && <p style={{ color: "#B23A2E", fontSize: 13, margin: 0 }}>{error}</p>}
+          {saved && <p style={{ color: "#0B5C4A", fontSize: 13, margin: 0 }}>Saved.</p>}
+        </div>
+        <button
+          className="ov-btn-sm primary"
+          onClick={save}
+          disabled={saving}
+          style={{ marginTop: 12, width: 90, display: "inline-block", textAlign: "center" }}
+        >
           {saving ? "Saving…" : "Save"}
         </button>
       </div>

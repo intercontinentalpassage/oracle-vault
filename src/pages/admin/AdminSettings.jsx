@@ -309,6 +309,7 @@ export default function AdminSettings() {
             className="ov-btn-sm primary"
             onClick={saveCurrency}
             disabled={savingCurrency || !displayedCurrency.trim() || displayedCurrency === currentCurrency}
+            style={{ width: 90, display: "inline-block", textAlign: "center" }}
           >
             {savingCurrency ? "Saving…" : "Save"}
           </button>
@@ -341,6 +342,7 @@ export default function AdminSettings() {
             className="ov-btn-sm primary"
             onClick={saveThankYou}
             disabled={savingThankYou || displayedThankYou === currentThankYou}
+            style={{ width: 90, display: "inline-block", textAlign: "center" }}
           >
             {savingThankYou ? "Saving…" : "Save"}
           </button>
