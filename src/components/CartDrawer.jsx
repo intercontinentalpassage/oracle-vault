@@ -21,6 +21,7 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
+  const [lastOrder, setLastOrder] = useState(null);
   const [showSummary, setShowSummary] = useState(false);
   useSiteSettingsVersion();
   const currency = currencyOverride || getCurrencySymbol();
@@ -93,6 +94,7 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
       });
       if (insertError) throw insertError;
       setSent(true);
+      setLastOrder({ cart, total, phone: cleanPhone, name: name.trim() });
       clear();
     } catch (e) {
       setError(e.message || String(e));
@@ -127,6 +129,13 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
           <div style={{ marginTop: 24 }}>
             <p style={{ fontWeight: 700 }}>{t(lang, "requestSent")}</p>
             <p style={{ color: "#5A6560", fontSize: 14 }}>{t(lang, "requestSentDetailCustomer")}</p>
+            <button
+              className="ov-link-btn"
+              style={{ marginTop: 8, color: "#0F7A63", fontWeight: 700 }}
+              onClick={() => setShowSummary(true)}
+            >
+              View invoice
+            </button>
             <button className="ov-btn-primary" style={{ marginTop: 16, width: "100%" }} onClick={onClose}>
               {t(lang, "done")}
             </button>
@@ -264,10 +273,10 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
         {showSummary && (
           <CartSummaryCard
             lang={lang}
-            cart={cart}
-            total={total}
-            phone={phone}
-            name={name}
+            cart={sent && lastOrder ? lastOrder.cart : cart}
+            total={sent && lastOrder ? lastOrder.total : total}
+            phone={sent && lastOrder ? lastOrder.phone : phone}
+            name={sent && lastOrder ? lastOrder.name : name}
             currencyOverride={currencyOverride}
             shopName={shopName}
             onClose={() => setShowSummary(false)}
