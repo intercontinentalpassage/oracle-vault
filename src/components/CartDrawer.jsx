@@ -106,7 +106,18 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
   return (
     <div className="ov-cart-overlay" onClick={onClose}>
       <div className="ov-cart-panel" onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            position: "sticky",
+            top: 0,
+            background: "#FFFFFF",
+            zIndex: 1,
+            paddingBottom: 8,
+          }}
+        >
           <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{t(lang, "yourCart")}</h2>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             {cart.length > 0 && !sent && (
