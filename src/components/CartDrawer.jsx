@@ -41,11 +41,11 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
     searchTimerRef.current = setTimeout(async () => {
       setSearching(true);
       const q = query.trim();
-      const { data } = await supabase
-        .from("customers")
-        .select("phone, name")
-        .or(`phone.ilike.%${q}%,name.ilike.%${q}%`)
-        .limit(8);
+      let queryBuilder = supabase.from("customers").select("phone, name").or(`phone.ilike.%${q}%,name.ilike.%${q}%`);
+      if (staffProfile?.role === "agent") {
+        queryBuilder = queryBuilder.eq("agent_id", staffProfile.agent_id);
+      }
+      const { data } = await queryBuilder.limit(8);
       setCustomerResults(data || []);
       setSearching(false);
     }, 250);
