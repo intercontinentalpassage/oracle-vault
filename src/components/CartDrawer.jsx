@@ -85,14 +85,82 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
         }
       }
 
-      const { error: insertError } = await supabase.from("purchase_requests").insert({
-        customer_phone: cleanPhone,
-        customer_name: name.trim() || null,
-        ticket_ids: cart.map((tk) => tk.id),
-        total,
-        agent_id: resolvedAgentId,
-      });
-      if (insertError) throw insertError;
+      if (isStaff) {
+        // Staff completing a checkout themselves is a real, immediate sale
+        // — not a request that needs separate approval later.
+        if (!resolvedAgentId && staffProfile?.role === "agent") {
+          resolvedAgentId = staffProfile.agent_id;
+        }
+
+        const ids = cart.map((tk) => tk.id);
+        const { data: updatedTickets, error: ticketError } = await supabase
+          .from("tickets")
+          .update({ status: "sold" })
+          .in("id", ids)
+          .eq("status", "available")
+          .select("id");
+        if (ticketError) throw ticketError;
+        if (!updatedTickets || updatedTickets.length !== ids.length) {
+          throw new Error("One or more of these tickets were no longer available — please refresh and try again.");
+        }
+
+        const { data: existingCustomer } = await supabase
+          .from("customers")
+          .select("id")
+          .eq("phone", cleanPhone)
+          .maybeSingle();
+        let customerId = existingCustomer?.id;
+        if (!customerId) {
+          const { data: newCustomer, error: custError } = await supabase
+            .from("customers")
+            .insert({ phone: cleanPhone, name: name.trim() || null })
+            .select()
+            .single();
+          if (custError) throw custError;
+          customerId = newCustomer.id;
+        }
+
+        // Any other pending request sharing one of these tickets loses
+        // just that ticket (or expires if it was its only one) — same
+        // cascading behavior as the admin panel and the Telegram bot.
+        const { data: otherPending } = await supabase
+          .from("purchase_requests")
+          .select("*")
+          .eq("status", "pending")
+          .overlaps("ticket_ids", ids);
+        for (const other of otherPending || []) {
+          const remaining = (other.ticket_ids || []).filter((id) => !ids.includes(id));
+          const otherPerTicketPrice = other.ticket_ids.length ? other.total / other.ticket_ids.length : 0;
+          await supabase
+            .from("purchase_requests")
+            .update({
+              ticket_ids: remaining,
+              total: otherPerTicketPrice * remaining.length,
+              status: remaining.length === 0 ? "expired" : "pending",
+            })
+            .eq("id", other.id);
+        }
+
+        const saleRows = cart.map((tk) => ({
+          ticket_id: tk.id,
+          customer_id: customerId,
+          customer_phone: cleanPhone,
+          agent_id: resolvedAgentId,
+          price: tk.price,
+        }));
+        const { error: saleError } = await supabase.from("sales").insert(saleRows);
+        if (saleError) throw saleError;
+      } else {
+        const { error: insertError } = await supabase.from("purchase_requests").insert({
+          customer_phone: cleanPhone,
+          customer_name: name.trim() || null,
+          ticket_ids: cart.map((tk) => tk.id),
+          total,
+          agent_id: resolvedAgentId,
+        });
+        if (insertError) throw insertError;
+      }
+
       setSent(true);
       setLastOrder({ cart, total, phone: cleanPhone, name: name.trim() });
       clear();
@@ -131,8 +199,12 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
 
         {sent ? (
           <div style={{ marginTop: 24 }}>
-            <p style={{ fontWeight: 700 }}>{t(lang, "requestSent")}</p>
-            <p style={{ color: "#5A6560", fontSize: 14 }}>{t(lang, "requestSentDetailCustomer")}</p>
+            <p style={{ fontWeight: 700 }}>{isStaff ? "Sold!" : t(lang, "requestSent")}</p>
+            <p style={{ color: "#5A6560", fontSize: 14 }}>
+              {isStaff
+                ? "The ticket(s) are marked sold and recorded — no approval needed."
+                : t(lang, "requestSentDetailCustomer")}
+            </p>
             <button
               className="ov-link-btn"
               style={{ marginTop: 8, color: "#0F7A63", fontWeight: 700 }}
@@ -276,7 +348,7 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
                 disabled={sending}
                 onClick={submit}
               >
-                {sending ? t(lang, "sending") : t(lang, "requestPurchase")}
+                {sending ? (isStaff ? "Selling…" : t(lang, "sending")) : isStaff ? "Sell" : t(lang, "requestPurchase")}
               </button>
             </div>
           </>
