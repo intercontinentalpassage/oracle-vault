@@ -130,6 +130,12 @@ button, select, input { font-family: inherit; }
 .ov-lang-menu-item:hover { background: #F4F8F6; }
 .ov-lang-menu-item.selected { background: #E6F4EF; color: #0B5C4A; }
 
+@media print {
+  body * { visibility: hidden; }
+  .ov-print-target, .ov-print-target * { visibility: visible; }
+  .ov-print-target { position: absolute; top: 0; left: 0; width: 100%; box-shadow: none; }
+}
+
 /* Themed dropdown (replaces native <select> popups everywhere) */
 .ov-dropdown-trigger {
   width: 100%;

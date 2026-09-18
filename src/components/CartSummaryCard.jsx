@@ -31,7 +31,7 @@ export default function CartSummaryCard({ lang, cart, total, phone, name, onClos
   return (
     <div className="ov-summary-overlay" onClick={onClose}>
       <div className="ov-summary-wrap" onClick={(e) => e.stopPropagation()}>
-        <div className="ov-summary-card" ref={cardRef}>
+        <div className="ov-summary-card ov-print-target" ref={cardRef}>
           <div className="ov-summary-header">
             <BrandBadge size={32} />
             <div>
@@ -74,8 +74,8 @@ export default function CartSummaryCard({ lang, cart, total, phone, name, onClos
         {error && <p style={{ color: "#B23A2E", fontSize: 12, marginTop: 8, textAlign: "center" }}>{error}</p>}
 
         <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-          <button className="ov-btn-sm" style={{ flex: 1 }} onClick={onClose}>
-            Close
+          <button className="ov-btn-sm" style={{ flex: 1 }} onClick={() => window.print()}>
+            Print receipt
           </button>
           <button className="ov-btn-sm primary" style={{ flex: 1 }} onClick={saveAsPhoto} disabled={saving}>
             {saving ? "Saving…" : "Save as photo"}

@@ -164,6 +164,7 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
       setSent(true);
       setLastOrder({ cart, total, phone: cleanPhone, name: name.trim() });
       clear();
+      if (isStaff) setShowSummary(true);
     } catch (e) {
       setError(e.message || String(e));
     } finally {
