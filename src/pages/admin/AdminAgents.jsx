@@ -26,6 +26,8 @@ export default function AdminAgents() {
   const [detailMode, setDetailMode] = useState("all"); // "all" tickets sent, or "sales" history
   const [detailSales, setDetailSales] = useState([]);
   const [detailTickets, setDetailTickets] = useState([]);
+  const [detailHiddenTickets, setDetailHiddenTickets] = useState(0);
+  const [detailHiddenSales, setDetailHiddenSales] = useState(0);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailEditing, setDetailEditing] = useState({});
   const [detailSelected, setDetailSelected] = useState(new Set());
@@ -43,13 +45,24 @@ export default function AdminAgents() {
     const [salesRes, ticketsRes] = await Promise.all([
       supabase
         .from("sales")
-        .select("id, price, sold_at, customer_phone, tickets(number)")
+        .select("id, price, sold_at, customer_phone, tickets(number, draws(draw_date))")
         .eq("agent_id", agent.id)
         .order("sold_at", { ascending: false }),
-      supabase.from("tickets").select("id, number, price, status").eq("agent_id", agent.id).order("number"),
+      supabase.from("tickets").select("id, number, price, status, draws(draw_date)").eq("agent_id", agent.id).order("number"),
     ]);
-    setDetailSales(salesRes.data || []);
-    setDetailTickets(ticketsRes.data || []);
+    // Hide tickets (and their sales) whose draw date has passed - same rule as
+    // the storefront, Admin > Tickets and the agent's own pages. Tickets with
+    // no draw never expire. Nothing is deleted.
+    const today = new Date().toISOString().slice(0, 10);
+    const isPast = (drawDate) => !!(drawDate && drawDate < today);
+    const allSales = salesRes.data || [];
+    const allTickets = ticketsRes.data || [];
+    const currentSales = allSales.filter((s) => !isPast(s.tickets?.draws?.draw_date));
+    const currentTickets = allTickets.filter((tk) => !isPast(tk.draws?.draw_date));
+    setDetailHiddenSales(allSales.length - currentSales.length);
+    setDetailHiddenTickets(allTickets.length - currentTickets.length);
+    setDetailSales(currentSales);
+    setDetailTickets(currentTickets);
     setDetailLoading(false);
   }
 
@@ -261,7 +274,7 @@ export default function AdminAgents() {
                 <p style={{ color: "#5A6560", fontSize: 13 }}>Loading…</p>
               ) : detailMode === "all" ? (
                 detailTickets.length === 0 ? (
-                  <p style={{ color: "#5A6560", fontSize: 13 }}>No tickets assigned yet.</p>
+                  <p style={{ color: "#5A6560", fontSize: 13 }}>{detailHiddenTickets > 0 ? "No current tickets." : "No tickets assigned yet."}</p>
                 ) : (
                   <div style={{ maxHeight: 320, overflowY: "auto" }}>
                     {detailTickets.map((tk) => (
@@ -287,7 +300,7 @@ export default function AdminAgents() {
                   </div>
                 )
               ) : detailSales.length === 0 ? (
-                <p style={{ color: "#5A6560", fontSize: 13 }}>No sales yet.</p>
+                <p style={{ color: "#5A6560", fontSize: 13 }}>{detailHiddenSales > 0 ? "No current sales." : "No sales yet."}</p>
               ) : (
                 <>
                   {detailSelected.size > 0 && (
