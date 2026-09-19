@@ -8,6 +8,7 @@ import BrandBadge from "../../components/BrandBadge";
 export default function AgentCatalog() {
   const { agentId } = useOutletContext();
   const [tickets, setTickets] = useState([]);
+  const [hiddenCount, setHiddenCount] = useState(0);
   const [groups, setGroups] = useState([]);
   const [agentCurrency, setAgentCurrency] = useState(null);
   const [agentName, setAgentName] = useState("");
@@ -48,12 +49,21 @@ export default function AgentCatalog() {
   async function load() {
     setLoading(true);
     const [ticketsRes, groupsRes, agentRes] = await Promise.all([
-      supabase.from("tickets").select("*").eq("agent_id", agentId).order("number"),
+      supabase.from("tickets").select("*, draws(draw_date)").eq("agent_id", agentId).order("number"),
       supabase.from("groups").select("*").order("sort_order"),
       supabase.from("agents").select("name, currency_symbol").eq("id", agentId).single(),
     ]);
     if (ticketsRes.error) setError(ticketsRes.error.message);
-    setTickets(ticketsRes.data || []);
+    // Hide tickets whose draw date has passed (same rule as the storefront
+    // and Admin > Tickets). Tickets with no draw never expire.
+    const today = new Date().toISOString().slice(0, 10);
+    const allTickets = ticketsRes.data || [];
+    const currentTickets = allTickets.filter((tk) => {
+      const drawDate = tk.draws?.draw_date;
+      return !(drawDate && drawDate < today);
+    });
+    setHiddenCount(allTickets.length - currentTickets.length);
+    setTickets(currentTickets);
     setGroups(groupsRes.data || []);
     setAgentCurrency(agentRes.data?.currency_symbol || null);
     setAgentName(agentRes.data?.name || "");
@@ -184,7 +194,7 @@ export default function AgentCatalog() {
       {loading ? (
         <p style={{ color: "#5A6560" }}>Loading…</p>
       ) : tickets.length === 0 ? (
-        <p style={{ color: "#5A6560" }}>No tickets assigned to you yet.</p>
+        <p style={{ color: "#5A6560" }}>{hiddenCount > 0 ? "No current tickets." : "No tickets assigned to you yet."}</p>
       ) : (
         <div className="ov-table-wrap"><table className="ov-table">
           <thead>

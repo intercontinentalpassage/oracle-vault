@@ -20,12 +20,20 @@ export default function AgentSales() {
     Promise.all([
       supabase
         .from("sales")
-        .select("*, tickets(number)")
+        .select("*, tickets(number, draws(draw_date))")
         .eq("agent_id", agentId)
         .order("sold_at", { ascending: false }),
       supabase.from("agents").select("currency_symbol").eq("id", agentId).single(),
     ]).then(([salesRes, agentRes]) => {
-      setSales(salesRes.data || []);
+      // Hide sales of tickets whose draw date has passed (same rule as the
+      // storefront and Admin > Tickets). Tickets with no draw never expire.
+      // Totals, the chart and the table all read from this filtered list.
+      const today = new Date().toISOString().slice(0, 10);
+      const currentSales = (salesRes.data || []).filter((s) => {
+        const drawDate = s.tickets?.draws?.draw_date;
+        return !(drawDate && drawDate < today);
+      });
+      setSales(currentSales);
       setAgentCurrency(agentRes.data?.currency_symbol || null);
       setLoading(false);
     });
