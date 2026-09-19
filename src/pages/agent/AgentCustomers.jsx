@@ -22,6 +22,7 @@ export default function AgentCustomers() {
   const [detailFor, setDetailFor] = useState(null);
   const [detailSales, setDetailSales] = useState([]);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [detailHiddenCount, setDetailHiddenCount] = useState(0);
   const [detailEditing, setDetailEditing] = useState({});
   const [detailSelected, setDetailSelected] = useState(new Set());
   const [detailBulkPrice, setDetailBulkPrice] = useState("");
@@ -36,11 +37,21 @@ export default function AgentCustomers() {
     setDetailLoading(true);
     const { data } = await supabase
       .from("sales")
-      .select("id, price, sold_at, tickets(number)")
+      .select("id, price, sold_at, tickets(number, draws(draw_date))")
       .eq("agent_id", agentId)
       .eq("customer_phone", row.phone)
       .order("sold_at", { ascending: false });
-    setDetailSales(data || []);
+    // Hide tickets whose draw date has passed (same rule as the storefront
+    // and the Archived filter). Tickets with no draw never expire.
+    const today = new Date().toISOString().slice(0, 10);
+    const isExpired = (s) => {
+      const drawDate = s.tickets?.draws?.draw_date;
+      return !!(drawDate && drawDate < today);
+    };
+    const all = data || [];
+    const current = all.filter((s) => !isExpired(s));
+    setDetailHiddenCount(all.length - current.length);
+    setDetailSales(current);
     setDetailLoading(false);
   }
 
@@ -232,7 +243,7 @@ export default function AgentCustomers() {
               {detailLoading ? (
                 <p style={{ color: "#5A6560", fontSize: 13 }}>Loading…</p>
               ) : detailSales.length === 0 ? (
-                <p style={{ color: "#5A6560", fontSize: 13 }}>No purchases yet.</p>
+                <p style={{ color: "#5A6560", fontSize: 13 }}>{detailHiddenCount > 0 ? "No current tickets." : "No purchases yet."}</p>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 320, overflowY: "auto" }}>
                   {detailSales.map((s) => (
