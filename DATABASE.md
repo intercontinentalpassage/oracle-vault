@@ -133,7 +133,10 @@ Every table has RLS enabled. The general pattern:
   only staff can read the queue.
 - **Staff data** (customers, sales, invoices, refunds): admin sees
   everything; agents are scoped to rows matching their own `agent_id`.
-- **profiles**: a user reads their own row; only admins can write.
+- **profiles**: a user reads their own row; only admins can write. (The one
+  exception is an agent changing their own `display_name`, which goes through
+  `update_my_display_name` below — never a direct write, since this table
+  also holds `role`.)
 
 Two helper functions used throughout the policies:
 ```sql
@@ -153,6 +156,11 @@ on `purchase_requests` plus a safe lookup function (see below).
   if set), `security definer`, callable by `anon`. This exists
   specifically so the anon key can never be used to browse other
   customers' purchase history.
+- **`update_my_display_name(p_name text)`** — lets a signed-in staff user change
+  *only their own* `profiles.display_name` (used by the agent's "Your name"
+  field in Shop settings). `security definer`, executable by `authenticated`
+  only (not `anon`). Trims the name, caps it at 60 characters, and stores an
+  empty name as NULL. It cannot touch `role` or `agent_id`.
 
 ## Storage buckets
 

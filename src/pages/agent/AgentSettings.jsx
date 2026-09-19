@@ -9,6 +9,8 @@ export default function AgentSettings() {
   const { agentId } = useOutletContext();
   const [agent, setAgent] = useState(null);
   const [name, setName] = useState("");
+  const [yourName, setYourName] = useState("");
+  const [savedYourName, setSavedYourName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [heroUrl, setHeroUrl] = useState("");
@@ -30,6 +32,13 @@ export default function AgentSettings() {
       setHeroUrl(data.hero_image_url || "");
       setCurrency(data.currency_symbol || "");
     }
+    const { data: sessionData } = await supabase.auth.getSession();
+    const userId = sessionData?.session?.user?.id;
+    if (userId) {
+      const { data: prof } = await supabase.from("profiles").select("display_name").eq("id", userId).maybeSingle();
+      setYourName(prof?.display_name || "");
+      setSavedYourName(prof?.display_name || "");
+    }
   }
 
   useEffect(() => {
@@ -50,11 +59,24 @@ export default function AgentSettings() {
         currency_symbol: currency.trim() || null,
       })
       .eq("id", agentId);
-    setSaving(false);
     if (updateError) {
+      setSaving(false);
       setError(updateError.message);
       return;
     }
+    // Agents can't write to profiles directly (that table also holds roles), so
+    // the name goes through a database function that only changes display_name.
+    if (yourName.trim() !== savedYourName) {
+      const { data: newName, error: nameError } = await supabase.rpc("update_my_display_name", { p_name: yourName });
+      if (nameError) {
+        setSaving(false);
+        setError(nameError.message);
+        return;
+      }
+      setSavedYourName(newName || "");
+      setYourName(newName || "");
+    }
+    setSaving(false);
     setSaved(true);
   }
 
@@ -159,6 +181,19 @@ export default function AgentSettings() {
 
       <div className="ov-card" style={{ maxWidth: 480 }}>
         <label style={{ fontSize: 12, fontWeight: 600, color: "#5A6560" }}>
+          Your name
+          <input
+            className="ov-input"
+            value={yourName}
+            maxLength={60}
+            placeholder="e.g. Sai"
+            onChange={(e) => setYourName(e.target.value)}
+          />
+        </label>
+        <p style={{ fontSize: 11, color: "#5A6560", margin: "4px 0 0" }}>
+          Shown in the menu at the top of the storefront, for example "Sai's Setting". Leave blank to show "My Setting".
+        </p>
+        <label style={{ fontSize: 12, fontWeight: 600, color: "#5A6560", display: "block", marginTop: 12 }}>
           Shop name
           <input className="ov-input" value={name} onChange={(e) => setName(e.target.value)} />
         </label>
