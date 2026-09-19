@@ -155,9 +155,6 @@ export default function Storefront() {
           </svg>
           {t(lang, "telegram")}
         </a>
-        <button className="ov-nav-link primary" onClick={() => setCartOpen(true)}>
-          {t(lang, "cartCount", { n: cart.length })}
-        </button>
       </header>
 
       <section className="ov-hero-section" id="top">

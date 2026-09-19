@@ -152,9 +152,6 @@ export default function AgentShop() {
         <Link to="/my-tickets" className="ov-nav-link">
           {t(lang, "myTickets")}
         </Link>
-        <button className="ov-nav-link primary" onClick={() => setCartOpen(true)}>
-          {t(lang, "cartCount", { n: cart.length })}
-        </button>
       </header>
 
       <section className="ov-hero-section" id="top">
