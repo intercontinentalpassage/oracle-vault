@@ -176,10 +176,9 @@ export default function Storefront() {
       />
 
       <footer className="ov-footer">
-        <div className="ov-footer-inner">
+        <div className="ov-footer-inner ov-footer-3col">
           <span>{t(lang, "footerNotice")}</span>
           <div className="ov-footer-links">
-            {!staffProfile && <a href="#/login">{t(lang, "login")}</a>}
             <button
               type="button"
               className="primary ov-link-button"
@@ -187,6 +186,9 @@ export default function Storefront() {
             >
               {t(lang, "backToTop")}
             </button>
+          </div>
+          <div className="ov-footer-links ov-footer-right">
+            {!staffProfile && <a href="#/login">{t(lang, "login")}</a>}
           </div>
         </div>
       </footer>
