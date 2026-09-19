@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { getCurrencySymbol, getSiteSetting, setSiteSetting, useSiteSettingsVersion } from "../../lib/siteSettingsStore";
+import { normalizeTelegram } from "../../lib/telegram";
 import { compressImage } from "../../lib/imageCompress";
 import ChangePassword from "../../components/ChangePassword";
 import BrandBadge from "../../components/BrandBadge";
@@ -39,6 +40,35 @@ export default function AdminSettings() {
     }
     setSiteSetting("invoice_thank_you", value);
     setThankYouSaved(true);
+  }
+
+  const [tgChannelInput, setTgChannelInput] = useState(null);
+  const [savingTgChannel, setSavingTgChannel] = useState(false);
+  const [tgChannelSaved, setTgChannelSaved] = useState(false);
+  const [tgChannelError, setTgChannelError] = useState("");
+  const currentTgChannel = getSiteSetting("telegram_channel") ? `@${getSiteSetting("telegram_channel")}` : "";
+  const displayedTgChannel = tgChannelInput === null ? currentTgChannel : tgChannelInput;
+
+  async function saveTgChannel() {
+    const username = normalizeTelegram(displayedTgChannel);
+    setTgChannelSaved(false);
+    if (username === null) {
+      setTgChannelError("Enter the channel's public username, like @yourchannel (5 to 32 letters, numbers or underscores).");
+      return;
+    }
+    setTgChannelError("");
+    setSavingTgChannel(true);
+    const { error: settingError } = await supabase
+      .from("site_settings")
+      .upsert({ key: "telegram_channel", value: username || null }, { onConflict: "key" });
+    setSavingTgChannel(false);
+    if (settingError) {
+      setTgChannelError(settingError.message);
+      return;
+    }
+    setSiteSetting("telegram_channel", username || null);
+    setTgChannelInput(username ? `@${username}` : "");
+    setTgChannelSaved(true);
   }
 
   const [uploadingBg, setUploadingBg] = useState(false);
@@ -349,6 +379,43 @@ export default function AdminSettings() {
         </div>
         <div style={{ minHeight: 21, marginTop: 8 }}>
           {thankYouSaved && <p style={{ color: "#0B5C4A", fontSize: 13, margin: 0 }}>Message updated.</p>}
+        </div>
+      </div>
+
+      <div className="ov-card" style={{ marginBottom: 20 }}>
+        <strong style={{ fontSize: 13 }}>Telegram channel (Buy in Telegram)</strong>
+        <p style={{ fontSize: 12, color: "#5A6560", margin: "4px 0 12px" }}>
+          When a customer taps "Buy in Telegram" in the cart, a photo of their chosen numbers is posted to this
+          channel. Use the channel's public @username, and make your bot an admin of the channel with permission to
+          post. Leave it blank to hide the button.
+        </p>
+        <div style={{ display: "flex", gap: 8, alignItems: "flex-end", maxWidth: 400 }}>
+          <label style={{ flex: 1 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "#5A6560" }}>Channel username</span>
+            <input
+              className="ov-input"
+              value={displayedTgChannel}
+              maxLength={80}
+              onChange={(e) => {
+                setTgChannelInput(e.target.value);
+                setTgChannelSaved(false);
+                setTgChannelError("");
+              }}
+              placeholder="@yourchannel"
+            />
+          </label>
+          <button
+            className="ov-btn-sm primary"
+            onClick={saveTgChannel}
+            disabled={savingTgChannel || displayedTgChannel === currentTgChannel}
+            style={{ width: 90, display: "inline-block", textAlign: "center" }}
+          >
+            {savingTgChannel ? "Saving…" : "Save"}
+          </button>
+        </div>
+        <div style={{ minHeight: 21, marginTop: 8 }}>
+          {tgChannelError && <p style={{ color: "#B23A2E", fontSize: 13, margin: 0 }}>{tgChannelError}</p>}
+          {tgChannelSaved && <p style={{ color: "#0B5C4A", fontSize: 13, margin: 0 }}>Channel saved.</p>}
         </div>
       </div>
 

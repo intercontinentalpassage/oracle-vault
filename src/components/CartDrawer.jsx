@@ -3,8 +3,11 @@ import { t } from "../lib/i18n";
 import { useCart } from "../lib/CartContext";
 import { supabase } from "../lib/supabaseClient";
 import { useSessionProfile } from "../lib/useSessionProfile";
-import { getCurrencySymbol, useSiteSettingsVersion } from "../lib/siteSettingsStore";
+import { getCurrencySymbol, getSiteSetting, useSiteSettingsVersion } from "../lib/siteSettingsStore";
+import { toPng } from "html-to-image";
 import CartSummaryCard from "./CartSummaryCard";
+import TelegramIcon from "./TelegramIcon";
+import TelegramPhotoCard from "./TelegramPhotoCard";
 
 export default function CartDrawer({ lang, open, onClose, agentId, currencyOverride, shopName }) {
   const { cart, remove, clear } = useCart();
@@ -23,6 +26,9 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
   const [sent, setSent] = useState(false);
   const [lastOrder, setLastOrder] = useState(null);
   const [showSummary, setShowSummary] = useState(false);
+  const [tgSending, setTgSending] = useState(false);
+  const [tgSent, setTgSent] = useState(null); // { postUrl } once posted
+  const photoRef = useRef(null);
   useSiteSettingsVersion();
   const currency = currencyOverride || getCurrencySymbol();
 
@@ -31,6 +37,7 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
   useEffect(() => {
     if (!open) {
       setSent(false);
+      setTgSent(null);
       setShowSummary(false);
       setError("");
     }
@@ -182,6 +189,35 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
     }
   }
 
+  // "Buy in Telegram": draws the chosen numbers as a picture and asks the
+  // send-cart-to-telegram backend function to post it to the shop's channel.
+  // Only shown when Admin > Settings has a Telegram channel set.
+  const telegramChannel = getSiteSetting("telegram_channel");
+
+  async function buyInTelegram() {
+    if (!photoRef.current || cart.length === 0) return;
+    setError("");
+    setTgSending(true);
+    try {
+      const image = await toPng(photoRef.current, { pixelRatio: 2, backgroundColor: "#FFFFFF" });
+      const { data, error: fnError } = await supabase.functions.invoke("send-cart-to-telegram", {
+        body: { ticket_ids: cart.map((tk) => tk.id), agent_id: agentId || null, image },
+      });
+      // For non-2xx replies the function's own JSON message is inside the error's response.
+      const result = fnError ? await fnError.context?.json?.().catch(() => null) : data;
+      if (!result?.ok) {
+        setError(result?.message || t(lang, "buyInTelegramFailed"));
+        return;
+      }
+      setTgSent({ postUrl: result.post_url || result.channel_url });
+      clear();
+    } catch {
+      setError(t(lang, "buyInTelegramFailed"));
+    } finally {
+      setTgSending(false);
+    }
+  }
+
   return (
     <div className="ov-cart-overlay" onClick={onClose}>
       <div className="ov-cart-panel" onClick={(e) => e.stopPropagation()}>
@@ -208,7 +244,24 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
           </button>
         </div>
 
-        {sent ? (
+        {tgSent ? (
+          <div style={{ marginTop: 24 }}>
+            <p style={{ fontWeight: 700 }}>{t(lang, "buyInTelegramSent")}</p>
+            <p style={{ color: "#5A6560", fontSize: 14 }}>{t(lang, "buyInTelegramSentDetail")}</p>
+            <a
+              className="ov-btn-primary"
+              href={tgSent.postUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ display: "block", boxSizing: "border-box", marginTop: 16, textAlign: "center", textDecoration: "none" }}
+            >
+              {t(lang, "openTelegramPost")}
+            </a>
+            <button className="ov-link-btn" style={{ marginTop: 12, width: "100%", color: "#5A6560" }} onClick={onClose}>
+              {t(lang, "done")}
+            </button>
+          </div>
+        ) : sent ? (
           <div style={{ marginTop: 24 }}>
             <p style={{ fontWeight: 700 }}>{isStaff ? "Sold!" : t(lang, "requestSent")}</p>
             <p style={{ color: "#5A6560", fontSize: 14 }}>
@@ -356,11 +409,32 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
               <button
                 className="ov-btn-primary"
                 style={{ width: "100%", marginTop: 14 }}
-                disabled={sending}
+                disabled={sending || tgSending}
                 onClick={submit}
               >
                 {sending ? (isStaff ? "Selling…" : t(lang, "sending")) : isStaff ? "Sell" : t(lang, "requestPurchase")}
               </button>
+              {!isStaff && telegramChannel && (
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ textAlign: "center", fontSize: 12, color: "#5A6560" }}>{t(lang, "buyInTelegramOr")}</div>
+                  <button
+                    className="ov-nav-link"
+                    style={{ width: "100%", justifyContent: "center", gap: 8, marginTop: 8 }}
+                    disabled={tgSending || sending}
+                    onClick={buyInTelegram}
+                  >
+                    <TelegramIcon />
+                    {tgSending ? t(lang, "buyInTelegramPosting") : t(lang, "buyInTelegram")}
+                  </button>
+                  <p style={{ fontSize: 11, color: "#5A6560", margin: "6px 0 0", textAlign: "center" }}>
+                    {t(lang, "buyInTelegramHint")}
+                  </p>
+                  {/* Off-screen: this is what gets turned into the picture that is posted. */}
+                  <div aria-hidden="true" style={{ position: "fixed", left: -10000, top: 0, pointerEvents: "none" }}>
+                    <TelegramPhotoCard innerRef={photoRef} cart={cart} total={total} currency={currency} shopName={shopName} />
+                  </div>
+                </div>
+              )}
             </div>
           </>
         )}

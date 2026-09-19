@@ -112,13 +112,21 @@ public); only staff can read/update the queue.
 ### `site_settings`
 Generic key/value store for anything site-wide and admin-editable:
 `logo_url`, `currency_symbol`, `results_bg_url` + `results_bg_overlay`
-(ticket card background), `draw_banner_bg_url` / `_color` / `_overlay`.
+(ticket card background), `draw_banner_bg_url` / `_color` / `_overlay`,
+`telegram_channel` (public channel username, no `@`, for the cart's "Buy in Telegram"
+button — blank hides the button).
 Public read (the storefront needs these), admin-only write.
 
 ### `translations` + `translation_locks`
 Every piece of customer-facing text, editable per-language from Admin ->
 Storefront text. `translation_locks` marks a key as "same in all
 languages" (used for things like a brand name that shouldn't translate).
+
+### `telegram_post_log`
+Rate-limit log for the `send-cart-to-telegram` Edge Function: one row per
+attempt with a one-way hash of the caller's IP (`ip_hash`) and `created_at`.
+Rows older than a day are deleted by the function. RLS is on with no
+policies, so only the service role (the function) can read or write it.
 
 ### `telegram_state`
 One row per Telegram chat mid-purchase (tracks "waiting for phone
@@ -182,6 +190,18 @@ so a raw phone photo never ends up as the literal file served to visitors.
   secret token (`x-telegram-bot-api-secret-token` header), since it
   can't use Supabase JWT auth. Uses the service role key to read
   tickets/groups and write purchase_requests directly.
+- **`send-cart-to-telegram`** (`verify_jwt: false`, source in
+  `supabase/functions/send-cart-to-telegram/`) — called by the cart's "Buy in
+  Telegram" button. Posts a photo of the customer's chosen numbers plus
+  "I want to buy this" to the Telegram channel named in
+  `site_settings.telegram_channel`. Numbers only — no customer details. It
+  re-checks the tickets in the database (must exist and be `available`),
+  builds the caption itself, checks the image really is a PNG/JPEG under
+  ~2 MB, and rate-limits per IP (10 per 10 min) and overall (120 per hour)
+  via `telegram_post_log`. The bot token comes only from the
+  `TELEGRAM_BOT_TOKEN` secret (no default in the source), and the bot must
+  be an admin of the channel. Without both the secret and the setting it
+  returns "not set up" and posts nothing.
 - **`admin-accounts`** (`verify_jwt: true`) — the only place staff
   account creation and password resets happen. Independently re-verifies
   the caller is a signed-in admin (checking `profiles.role`, not just
