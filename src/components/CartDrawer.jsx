@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { t } from "../lib/i18n";
 import { useCart } from "../lib/CartContext";
 import { supabase } from "../lib/supabaseClient";
@@ -25,6 +25,16 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
   const [showSummary, setShowSummary] = useState(false);
   useSiteSettingsVersion();
   const currency = currencyOverride || getCurrencySymbol();
+
+  // The drawer stays mounted while closed, so without this the "Request sent" /
+  // "Sold!" screen would come back the next time the cart is opened with new tickets.
+  useEffect(() => {
+    if (!open) {
+      setSent(false);
+      setShowSummary(false);
+      setError("");
+    }
+  }, [open]);
 
   if (!open) return null;
 
