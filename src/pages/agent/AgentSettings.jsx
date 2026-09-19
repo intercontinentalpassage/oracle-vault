@@ -4,6 +4,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { getCurrencySymbol } from "../../lib/siteSettingsStore";
 import { compressImage } from "../../lib/imageCompress";
 import ChangePassword from "../../components/ChangePassword";
+import { normalizeTelegram } from "../../lib/telegram";
 
 export default function AgentSettings() {
   const { agentId } = useOutletContext();
@@ -13,6 +14,7 @@ export default function AgentSettings() {
   const [savedYourName, setSavedYourName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [telegram, setTelegram] = useState("");
   const [heroUrl, setHeroUrl] = useState("");
   const [currency, setCurrency] = useState("");
   const [saving, setSaving] = useState(false);
@@ -29,6 +31,7 @@ export default function AgentSettings() {
       setName(data.name || "");
       setPhone(data.phone || "");
       setEmail(data.email || "");
+      setTelegram(data.telegram ? `@${data.telegram}` : "");
       setHeroUrl(data.hero_image_url || "");
       setCurrency(data.currency_symbol || "");
     }
@@ -49,12 +52,19 @@ export default function AgentSettings() {
     setSaving(true);
     setSaved(false);
     setError("");
+    const tg = normalizeTelegram(telegram);
+    if (tg === null) {
+      setSaving(false);
+      setError("Enter your Telegram username, like @yourname (5 to 32 letters, numbers or underscores).");
+      return;
+    }
     const { error: updateError } = await supabase
       .from("agents")
       .update({
         name: name.trim(),
         phone: phone.trim() || null,
         email: email.trim() || null,
+        telegram: tg || null,
         hero_image_url: heroUrl.trim() || null,
         currency_symbol: currency.trim() || null,
       })
@@ -76,6 +86,7 @@ export default function AgentSettings() {
       setSavedYourName(newName || "");
       setYourName(newName || "");
     }
+    setTelegram(tg ? `@${tg}` : "");
     setSaving(false);
     setSaved(true);
   }
@@ -205,6 +216,20 @@ export default function AgentSettings() {
           Contact email
           <input className="ov-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         </label>
+        <label style={{ fontSize: 12, fontWeight: 600, color: "#5A6560", display: "block", marginTop: 12 }}>
+          Telegram
+          <input
+            className="ov-input"
+            value={telegram}
+            maxLength={80}
+            placeholder="@yourname"
+            onChange={(e) => setTelegram(e.target.value)}
+          />
+        </label>
+        <p style={{ fontSize: 11, color: "#5A6560", margin: "4px 0 0" }}>
+          Your own Telegram username. It shows as a Telegram button on your shop page so customers can message you.
+          Leave blank to hide the button.
+        </p>
 
         <div style={{ marginTop: 16 }}>
           <span style={{ fontSize: 12, fontWeight: 600, color: "#5A6560" }}>Hero image</span>

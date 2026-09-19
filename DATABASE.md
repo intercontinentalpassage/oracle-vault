@@ -32,6 +32,7 @@ shop/dashboard when set.
 | hero_image_url | text | Supabase Storage URL |
 | active | boolean | inactive agents' shops show "doesn't exist" |
 | currency_symbol | text | nullable — falls back to site default |
+| telegram | text | nullable — the agent's own Telegram username (no `@`), shown as a Telegram button on their shop page. CHECK: 5-32 letters/numbers/underscores. Never falls back to the site owner's Telegram |
 | created_at | timestamptz | |
 
 ### `groups`

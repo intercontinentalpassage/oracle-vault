@@ -6,6 +6,8 @@ import { useCart } from "../lib/CartContext";
 import { useSessionProfile } from "../lib/useSessionProfile";
 import LanguageSwitcher from "../components/LanguageSwitcher";
 import StaffMenu from "../components/StaffMenu";
+import TelegramIcon from "../components/TelegramIcon";
+import { telegramUrl } from "../lib/telegram";
 import DigitSearch from "../components/DigitSearch";
 import DrawBanner from "../components/DrawBanner";
 import TicketResults from "../components/TicketResults";
@@ -201,10 +203,27 @@ export default function AgentShop() {
         </div>
       </footer>
 
-      {cart.length > 0 && !cartOpen && (
-        <button className="ov-cart-fab" onClick={() => setCartOpen(true)}>
-          {t(lang, "cartCount", { n: cart.length })}
-        </button>
+      {(agent.telegram || (cart.length > 0 && !cartOpen)) && (
+        <div className="ov-fab-group">
+          {/* The agent's OWN Telegram only; with none set there is no Telegram button at all. */}
+          {agent.telegram && (
+            <a
+              href={telegramUrl(agent.telegram)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ov-cart-fab ov-telegram-fab"
+              aria-label={t(lang, "telegram")}
+            >
+              <TelegramIcon />
+              <span className="ov-telegram-fab-label">{t(lang, "telegram")}</span>
+            </a>
+          )}
+          {cart.length > 0 && !cartOpen && (
+            <button className="ov-cart-fab" onClick={() => setCartOpen(true)}>
+              {t(lang, "cartCount", { n: cart.length })}
+            </button>
+          )}
+        </div>
       )}
 
       <CartDrawer
