@@ -5,6 +5,7 @@ import { t, useLang } from "../lib/i18n";
 import { useCart } from "../lib/CartContext";
 import { useSessionProfile } from "../lib/useSessionProfile";
 import LanguageSwitcher from "../components/LanguageSwitcher";
+import StaffMenu from "../components/StaffMenu";
 import DigitSearch from "../components/DigitSearch";
 import DrawBanner from "../components/DrawBanner";
 import TicketResults from "../components/TicketResults";
@@ -135,15 +136,12 @@ export default function AgentShop() {
             <div style={{ fontSize: 11, color: "#5A6560" }}>{t(lang, "viaOracleVault")}</div>
           </div>
         </div>
-        {staffProfile?.role === "admin" && (
-          <Link to="/admin" className="ov-nav-link">
-            Admin setting
-          </Link>
-        )}
+        {staffProfile?.role === "admin" && <StaffMenu label="Admin setting" settingsTo="/admin" />}
         {staffProfile?.role === "agent" && (
-          <Link to="/agent" className="ov-nav-link">
-            {staffProfile.display_name ? `${staffProfile.display_name}'s Setting` : "My Setting"}
-          </Link>
+          <StaffMenu
+            label={staffProfile.display_name ? `${staffProfile.display_name}'s Setting` : "My Setting"}
+            settingsTo="/agent"
+          />
         )}
         <LanguageSwitcher lang={lang} onChange={setLang} />
         <Link to="/" className="ov-nav-link">

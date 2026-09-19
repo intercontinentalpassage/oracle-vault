@@ -124,6 +124,20 @@ button, select, input { font-family: inherit; }
 .ov-lang-menu-item:hover { background: #F4F8F6; }
 .ov-lang-menu-item.selected { background: #E6F4EF; color: #0B5C4A; }
 
+/* Header menu for a logged-in admin/agent (reuses the language-menu look) */
+.ov-staff-menu-wrap { position: relative; }
+.ov-staff-trigger { gap: 8px; }
+.ov-staff-chevron { transition: transform 0.15s ease; }
+.ov-staff-chevron.open { transform: rotate(180deg); }
+.ov-staff-menu { display: flex; flex-direction: column; gap: 2px; }
+.ov-staff-menu-item {
+  display: block; width: 100%; box-sizing: border-box;
+  border: none; background: transparent; font-family: inherit;
+  text-align: left; text-decoration: none;
+}
+.ov-staff-menu-item.danger { color: #B42318; }
+.ov-staff-menu-item.danger:hover { background: #FDECEA; }
+
 @media print {
   body * { visibility: hidden; }
   .ov-print-target, .ov-print-target * { visibility: visible; }
