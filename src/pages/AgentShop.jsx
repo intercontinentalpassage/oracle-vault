@@ -135,17 +135,17 @@ export default function AgentShop() {
             <div style={{ fontSize: 11, color: "#5A6560" }}>{t(lang, "viaOracleVault")}</div>
           </div>
         </div>
-        <LanguageSwitcher lang={lang} onChange={setLang} />
         {staffProfile?.role === "admin" && (
           <Link to="/admin" className="ov-nav-link">
-            ← Admin
+            Admin setting
           </Link>
         )}
         {staffProfile?.role === "agent" && (
           <Link to="/agent" className="ov-nav-link">
-            ← My dashboard
+            {staffProfile.display_name ? `${staffProfile.display_name}'s Setting` : "My Setting"}
           </Link>
         )}
+        <LanguageSwitcher lang={lang} onChange={setLang} />
         <Link to="/" className="ov-nav-link">
           {t(lang, "mainStorefront")}
         </Link>

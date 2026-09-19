@@ -129,17 +129,17 @@ export default function Storefront() {
           <BrandBadge />
           <div className="ov-brand-name">Oracle Vault</div>
         </div>
-        <LanguageSwitcher lang={lang} onChange={setLang} />
         {staffProfile?.role === "admin" && (
           <Link to="/admin" className="ov-nav-link">
-            ← Admin
+            Admin setting
           </Link>
         )}
         {staffProfile?.role === "agent" && (
           <Link to="/agent" className="ov-nav-link">
-            ← My dashboard
+            {staffProfile.display_name ? `${staffProfile.display_name}'s Setting` : "My Setting"}
           </Link>
         )}
+        <LanguageSwitcher lang={lang} onChange={setLang} />
         <Link to="/my-tickets" className="ov-nav-link">
           {t(lang, "myTickets")}
         </Link>
