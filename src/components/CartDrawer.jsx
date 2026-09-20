@@ -57,17 +57,17 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
   useEffect(() => {
     let cancelled = false;
     if (staffProfile?.role === "agent" && staffProfile.agent_id && !agentId) {
-      supabase
-        .from("agents")
-        .select("slug, email, name, phone")
-        .eq("id", staffProfile.agent_id)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (cancelled || !data?.slug) return;
-          autoAgentCode.current = data.slug;
-          setAgentSelf(data);
-          setAgentCode((prev) => prev || data.slug);
-        });
+      (async () => {
+        const [{ data }, { data: sess }] = await Promise.all([
+          supabase.from("agents").select("slug, email, name, phone").eq("id", staffProfile.agent_id).maybeSingle(),
+          supabase.auth.getSession(),
+        ]);
+        if (cancelled || !data?.slug) return;
+        autoAgentCode.current = data.slug;
+        // loginEmail comes from the agent's own session - it is never looked up in the database.
+        setAgentSelf({ ...data, loginEmail: sess?.session?.user?.email || "" });
+        setAgentCode((prev) => prev || data.slug);
+      })();
     } else {
       setAgentSelf(null);
       if (autoAgentCode.current) {
@@ -92,12 +92,9 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
   // logged-in agent's own code - otherwise anyone could type an agent's public shop
   // code to send requests that look like they came from that agent.)
   const enteredCode = agentCode.trim();
-  const codeIsMine =
-    !isStaff &&
-    !agentId &&
-    !!agentSelf &&
-    !!enteredCode &&
-    (enteredCode === agentSelf.slug || (!!agentSelf.email && enteredCode === agentSelf.email));
+  const norm = (v) => (v || "").trim().toLowerCase();
+  const myCodes = agentSelf ? [agentSelf.slug, agentSelf.email, agentSelf.loginEmail].map(norm).filter(Boolean) : [];
+  const codeIsMine = !isStaff && !agentId && !!agentSelf && !!enteredCode && myCodes.includes(norm(enteredCode));
   const agentPhone = (agentSelf?.phone || "").trim();
   const buyingAsAgent = codeIsMine && !!agentPhone;
   const agentDisplayName = staffProfile?.display_name || agentSelf?.name || "";
@@ -139,7 +136,7 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
     setError("");
     setSending(true);
     try {
-      let resolvedAgentId = agentId || null;
+      let resolvedAgentId = agentId || (codeIsMine ? staffProfile.agent_id : null);
       const code = agentCode.trim();
       if (!resolvedAgentId && code) {
         const { data: matchedAgent } = await supabase
