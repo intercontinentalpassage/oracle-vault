@@ -29,6 +29,7 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
   const [tgSending, setTgSending] = useState(false);
   const [tgSent, setTgSent] = useState(null); // { postUrl } once posted
   const photoRef = useRef(null);
+  const autoAgentCode = useRef(""); // the value we filled in ourselves, so we can take it back out
   useSiteSettingsVersion();
   const currency = currencyOverride || getCurrencySymbol();
 
@@ -42,6 +43,32 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
       setError("");
     }
   }, [open]);
+
+  // A logged-in agent using the main storefront: pre-fill "Agent code or email" with
+  // their own shop code so the sale is visibly credited to them. It is cleared again
+  // when they log out, so the next customer on this browser isn't credited to them.
+  useEffect(() => {
+    let cancelled = false;
+    if (staffProfile?.role === "agent" && staffProfile.agent_id && !agentId) {
+      supabase
+        .from("agents")
+        .select("slug")
+        .eq("id", staffProfile.agent_id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (cancelled || !data?.slug) return;
+          autoAgentCode.current = data.slug;
+          setAgentCode((prev) => prev || data.slug);
+        });
+    } else if (autoAgentCode.current) {
+      const filled = autoAgentCode.current;
+      autoAgentCode.current = "";
+      setAgentCode((prev) => (prev === filled ? "" : prev));
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [staffProfile?.role, staffProfile?.agent_id, agentId]);
 
   if (!open) return null;
 
