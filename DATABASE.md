@@ -165,6 +165,23 @@ on `purchase_requests` plus a safe lookup function (see below).
   if set), `security definer`, callable by `anon`. This exists
   specifically so the anon key can never be used to browse other
   customers' purchase history.
+- **`approve_purchase_request(p_request_id uuid, p_ticket_ids uuid[])`** —
+  approves a purchase request atomically (admins from the admin panel, and the
+  service role). It locks the tickets first (always in id order), then
+  re-checks that the request is still `pending` and every selected ticket is
+  still `available`, and only then sells them, records the sales, and expires
+  (or trims) every other pending request that wanted the same tickets. If a
+  ticket was already taken, the request expires instead (its ticket list is
+  kept so we still know what was asked for). Returns
+  `{ok, code, status, message}` rather than raising, so the outcome is
+  persisted. This is what stops several requests for one ticket all being
+  approved. `p_ticket_ids` lets the admin approve only some of a request's
+  tickets.
+- **Guard trigger `tickets_block_double_sale`** — refuses an update that sets
+  a ticket's `status` to `sold` when it is already `sold`. A safety net for any
+  path that doesn't use `approve_purchase_request` (the Telegram Approve
+  button still does its own multi-step approval). Price/group edits on sold
+  tickets are unaffected.
 - **`update_my_display_name(p_name text)`** — lets a signed-in staff user change
   *only their own* `profiles.display_name` (used by the agent's "Your name"
   field in Shop settings). `security definer`, executable by `authenticated`

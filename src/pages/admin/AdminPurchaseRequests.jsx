@@ -65,7 +65,7 @@ export default function AdminPurchaseRequests() {
   }, []);
 
   async function approve(req) {
-    if (inFlightRef.current.has(req.id)) return;
+    if (busyId !== null || inFlightRef.current.has(req.id)) return;
     inFlightRef.current.add(req.id);
     const selectedIds = [...getSelected(req)];
     if (selectedIds.length === 0) {
@@ -75,75 +75,25 @@ export default function AdminPurchaseRequests() {
     setBusyId(req.id);
     setError("");
     try {
-      const { data: sess } = await supabase.auth.getSession();
-      const userId = sess.session?.user?.id;
-
-      // Upsert the customer record.
-      const { data: existingCustomer } = await supabase
-        .from("customers")
-        .select("id")
-        .eq("phone", req.customer_phone)
-        .maybeSingle();
-      let customerId = existingCustomer?.id;
-      if (!customerId) {
-        const { data: newCustomer, error: custError } = await supabase
-          .from("customers")
-          .insert({ phone: req.customer_phone, name: req.customer_name })
-          .select()
-          .single();
-        if (custError) throw custError;
-        customerId = newCustomer.id;
+      // The whole approval happens inside the database in one step: it re-checks that
+      // this request is still pending and its tickets are still available, sells them,
+      // and expires every other pending request that wanted the same tickets. Approving
+      // two requests for the same ticket at the same moment (or from a stale screen)
+      // can no longer sell it twice.
+      const { data: result, error: rpcError } = await supabase.rpc("approve_purchase_request", {
+        p_request_id: req.id,
+        p_ticket_ids: selectedIds,
+      });
+      if (rpcError) throw rpcError;
+      if (!result?.ok) {
+        setError(result?.message || "Couldn't approve this request.");
+        load(); // show the real, current state
+        return;
       }
 
-      // Mark only the approved tickets sold — anything left unchecked simply
-      // stays "available", same as any other single ticket.
-      const { error: ticketError } = await supabase
-        .from("tickets")
-        .update({ status: "sold" })
-        .in("id", selectedIds);
-      if (ticketError) throw ticketError;
-
-      // Any OTHER pending request that also references one of these
-      // now-sold tickets loses that ticket automatically — if that leaves
-      // it with nothing, it's marked expired instead of staying stuck
-      // pending forever with no way to fulfill it.
-      const { data: otherPending } = await supabase
-        .from("purchase_requests")
-        .select("*")
-        .eq("status", "pending")
-        .neq("id", req.id)
-        .overlaps("ticket_ids", selectedIds);
-
-      for (const other of otherPending || []) {
-        const remaining = (other.ticket_ids || []).filter((id) => !selectedIds.includes(id));
-        const otherPerTicketPrice = other.ticket_ids.length ? other.total / other.ticket_ids.length : 0;
-        const { error: expireError } = await supabase
-          .from("purchase_requests")
-          .update({
-            ticket_ids: remaining,
-            total: otherPerTicketPrice * remaining.length,
-            status: remaining.length === 0 ? "expired" : "pending",
-          })
-          .eq("id", other.id);
-        if (expireError) throw expireError;
-      }
-
-      // Record a sale row per approved ticket, using the original per-ticket price.
-      const perTicketPrice = req.ticket_ids.length ? req.total / req.ticket_ids.length : 0;
-      const saleRows = selectedIds.map((ticketId) => ({
-        ticket_id: ticketId,
-        customer_id: customerId,
-        customer_phone: req.customer_phone,
-        agent_id: req.agent_id,
-        price: perTicketPrice,
-      }));
-      const { error: saleError } = await supabase.from("sales").insert(saleRows);
-      if (saleError) throw saleError;
-
-      // The request itself is confirmed for exactly what was approved —
-      // any unchecked tickets drop out of it and go back to being ordinary
-      // available singles, un-tied to this (or any) request. If the admin
-      // picked a different group for any of them, move them there too.
+      // Tickets left unchecked drop out of the request and go back to being ordinary
+      // available singles. If the admin picked a different group for any of them,
+      // move them there too.
       const leftoverIds = (req.ticket_ids || []).filter((id) => !selectedIds.includes(id));
       const leftoverByGroup = {};
       leftoverIds.forEach((id) => {
@@ -155,17 +105,6 @@ export default function AdminPurchaseRequests() {
         const { error: groupError } = await supabase.from("tickets").update({ group_key: group }).in("id", ids);
         if (groupError) throw groupError;
       }
-
-      const { error: reqUpdateError } = await supabase
-        .from("purchase_requests")
-        .update({
-          status: "confirmed",
-          decided_by: userId,
-          ticket_ids: selectedIds,
-          total: perTicketPrice * selectedIds.length,
-        })
-        .eq("id", req.id);
-      if (reqUpdateError) throw reqUpdateError;
 
       setSelections((prev) => {
         const next = { ...prev };
@@ -315,12 +254,12 @@ export default function AdminPurchaseRequests() {
                 <strong>{currency}{Number(req.total || 0).toLocaleString()}</strong>
                 {req.status === "pending" && (
                   <div style={{ display: "flex", gap: 8 }}>
-                    <button className="ov-btn-sm danger" disabled={busyId === req.id} onClick={() => reject(req)}>
+                    <button className="ov-btn-sm danger" disabled={busyId !== null} onClick={() => reject(req)}>
                       Reject
                     </button>
                     <button
                       className="ov-btn-sm primary"
-                      disabled={busyId === req.id || getSelected(req).size === 0}
+                      disabled={busyId !== null || getSelected(req).size === 0}
                       onClick={() => approve(req)}
                     >
                       {busyId === req.id ? "Approving…" : `Approve (${getSelected(req).size}/${(req.ticket_ids || []).length})`}
