@@ -12,7 +12,13 @@ import TelegramPhotoCard from "./TelegramPhotoCard";
 export default function CartDrawer({ lang, open, onClose, agentId, currencyOverride, shopName }) {
   const { cart, remove, clear } = useCart();
   const { profile: staffProfile } = useSessionProfile();
-  const isStaff = staffProfile?.role === "admin" || staffProfile?.role === "agent";
+  // "Staff" mode = selling directly: tickets are marked sold at once, no approval.
+  // Admins can do that anywhere; an agent only on their OWN shop page. On the main
+  // storefront (or another agent's shop) an agent buys like any customer:
+  // Request purchase or Buy in Telegram.
+  const isAdmin = staffProfile?.role === "admin";
+  const isOwnShopAgent = staffProfile?.role === "agent" && !!agentId && staffProfile.agent_id === agentId;
+  const isStaff = isAdmin || isOwnShopAgent;
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
   const [agentCode, setAgentCode] = useState("");
