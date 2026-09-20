@@ -98,6 +98,7 @@ public); only staff can read/update the queue.
 | customer_phone, customer_name | text | |
 | ticket_ids | uuid[] | |
 | total | numeric | |
+| requested_numbers | text[] | the ticket numbers originally asked for. Set by the database on insert (trigger `purchase_requests_snapshot_numbers`, callers can't spoof it) so it survives the request being trimmed or expiring |
 | status | text | `pending`, `confirmed`, `rejected` |
 | agent_id | uuid, nullable | set when submitted through an agent's shop |
 | decided_by | uuid, FK -> profiles | who approved/rejected it |
@@ -164,7 +165,11 @@ on `purchase_requests` plus a safe lookup function (see below).
   requests and sales (including their `customer_name` from `customers`,
   if set), `security definer`, callable by `anon`. This exists
   specifically so the anon key can never be used to browse other
-  customers' purchase history.
+  customers' purchase history. Request rows carry the numbers that were
+  asked for in `ticket_number` (comma-separated; empty for `confirmed`
+  requests, whose tickets already appear as `sale` rows), and a
+  `sold_out_numbers` column: everything for an `expired` request, or the
+  numbers dropped from a still-`pending` one.
 - **`approve_purchase_request(p_request_id uuid, p_ticket_ids uuid[])`** —
   approves a purchase request atomically (admins from the admin panel, and the
   service role). It locks the tickets first (always in id order), then

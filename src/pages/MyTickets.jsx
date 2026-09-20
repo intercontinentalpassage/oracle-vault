@@ -11,6 +11,7 @@ function statusLabel(lang, status) {
   if (status === "confirmed") return t(lang, "statusPurchased");
   if (status === "pending") return t(lang, "statusPending");
   if (status === "rejected") return t(lang, "statusRejected");
+  if (status === "expired") return t(lang, "statusExpired");
   return status;
 }
 
@@ -43,7 +44,13 @@ export default function MyTickets() {
     }
   }
 
-  const invoiceTotal = results.reduce((sum, r) => sum + (Number(r.total) || 0), 0);
+  // An approved request and its sold tickets are the same purchase, and the tickets
+  // already appear as "sale" rows - so approved requests are not listed a second time.
+  const rows = results.filter((r) => !(r.source === "purchase_request" && r.status === "confirmed"));
+  // The invoice is a receipt: only tickets actually bought, and the total counts only those
+  // (it used to add up pending, rejected and expired requests, and approved ones twice).
+  const purchases = results.filter((r) => r.source === "sale");
+  const invoiceTotal = purchases.reduce((sum, r) => sum + (Number(r.total) || 0), 0);
 
   async function lookup() {
     const cleanPhone = phone.trim();
@@ -103,20 +110,32 @@ export default function MyTickets() {
                 ) : (
                   <span />
                 )}
-                <button className="ov-btn-sm primary" onClick={() => setShowInvoice(true)}>
-                  View invoice
-                </button>
+                {purchases.length > 0 && (
+                  <button className="ov-btn-sm primary" onClick={() => setShowInvoice(true)}>
+                    View invoice
+                  </button>
+                )}
               </div>
-              {results.map((r) => (
+              {rows.map((r) => (
                 <div key={r.id} className="ov-cart-item">
-                  <div>
-                    <div style={{ fontFamily: "'Space Mono', monospace" }}>{r.ticket_number || "—"}</div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontFamily: "'Space Mono', monospace", overflowWrap: "anywhere" }}>{r.ticket_number || "—"}</div>
                     <div style={{ fontSize: 12, color: "#5A6560" }}>
                       {new Date(r.created_at).toLocaleDateString()}
                     </div>
+                    {r.status === "expired" && (
+                      <div style={{ fontSize: 12, color: "#B23A2E", marginTop: 2 }}>{t(lang, "statusExpiredDetail")}</div>
+                    )}
+                    {r.status === "pending" && r.sold_out_numbers && (
+                      <div style={{ fontSize: 12, color: "#B23A2E", marginTop: 2 }}>
+                        {t(lang, "soldOutNumbers", { n: r.sold_out_numbers })}
+                      </div>
+                    )}
                   </div>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontWeight: 600 }}>{statusLabel(lang, r.status)}</div>
+                  <div style={{ textAlign: "right", flexShrink: 0, paddingLeft: 12 }}>
+                    <div style={{ fontWeight: 600, color: r.status === "expired" ? "#B23A2E" : undefined }}>
+                      {statusLabel(lang, r.status)}
+                    </div>
                     <div style={{ fontSize: 12, color: "#5A6560" }}>{currency}{Number(r.total || 0).toLocaleString()}</div>
                   </div>
                 </div>
@@ -144,7 +163,7 @@ export default function MyTickets() {
                 <div className="ov-summary-divider" />
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 360, overflowY: "auto" }}>
-                  {results.map((r) => (
+                  {purchases.map((r) => (
                     <div key={r.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
                       <span style={{ fontFamily: "'Space Mono', monospace", letterSpacing: "0.05em" }}>
                         {r.ticket_number || "—"} <span style={{ fontSize: 11, color: "#5A6560" }}>({statusLabel(lang, r.status)})</span>
