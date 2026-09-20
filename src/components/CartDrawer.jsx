@@ -418,7 +418,7 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
                 <div style={{ marginTop: 12 }}>
                   <div style={{ textAlign: "center", fontSize: 12, color: "#5A6560" }}>{t(lang, "buyInTelegramOr")}</div>
                   <button
-                    className="ov-nav-link"
+                    className="ov-nav-link ov-telegram-btn"
                     style={{ width: "100%", justifyContent: "center", gap: 8, marginTop: 8 }}
                     disabled={tgSending || sending}
                     onClick={buyInTelegram}
