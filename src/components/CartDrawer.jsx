@@ -36,6 +36,7 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
   const [tgSent, setTgSent] = useState(null); // { postUrl } once posted
   const photoRef = useRef(null);
   const autoAgentCode = useRef(""); // the value we filled in ourselves, so we can take it back out
+  const [agentSelf, setAgentSelf] = useState(null); // the logged-in agent's own details (slug, email, name, phone)
   useSiteSettingsVersion();
   const currency = currencyOverride || getCurrencySymbol();
 
@@ -58,18 +59,22 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
     if (staffProfile?.role === "agent" && staffProfile.agent_id && !agentId) {
       supabase
         .from("agents")
-        .select("slug")
+        .select("slug, email, name, phone")
         .eq("id", staffProfile.agent_id)
         .maybeSingle()
         .then(({ data }) => {
           if (cancelled || !data?.slug) return;
           autoAgentCode.current = data.slug;
+          setAgentSelf(data);
           setAgentCode((prev) => prev || data.slug);
         });
-    } else if (autoAgentCode.current) {
-      const filled = autoAgentCode.current;
-      autoAgentCode.current = "";
-      setAgentCode((prev) => (prev === filled ? "" : prev));
+    } else {
+      setAgentSelf(null);
+      if (autoAgentCode.current) {
+        const filled = autoAgentCode.current;
+        autoAgentCode.current = "";
+        setAgentCode((prev) => (prev === filled ? "" : prev));
+      }
     }
     return () => {
       cancelled = true;
@@ -79,6 +84,23 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
   if (!open) return null;
 
   const total = cart.reduce((sum, tk) => sum + (Number(tk.price) || 0), 0);
+
+  // A logged-in agent requesting a purchase for themselves on the main storefront:
+  // when the agent code/email box holds THEIR OWN code or email, their own phone and
+  // name are already known, so the form doesn't ask for them. Clear the box and the
+  // fields come back for entering a customer's details. (Deliberately only for the
+  // logged-in agent's own code - otherwise anyone could type an agent's public shop
+  // code to send requests that look like they came from that agent.)
+  const enteredCode = agentCode.trim();
+  const codeIsMine =
+    !isStaff &&
+    !agentId &&
+    !!agentSelf &&
+    !!enteredCode &&
+    (enteredCode === agentSelf.slug || (!!agentSelf.email && enteredCode === agentSelf.email));
+  const agentPhone = (agentSelf?.phone || "").trim();
+  const buyingAsAgent = codeIsMine && !!agentPhone;
+  const agentDisplayName = staffProfile?.display_name || agentSelf?.name || "";
 
   let searchTimer;
   function searchCustomers(query) {
@@ -109,8 +131,8 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
   }
 
   async function submit() {
-    const cleanPhone = phone.trim();
-    if (!/^\d{6,}$/.test(cleanPhone.replace(/\s|-/g, ""))) {
+    const cleanPhone = buyingAsAgent ? agentPhone : phone.trim();
+    if (!buyingAsAgent && !/^\d{6,}$/.test(cleanPhone.replace(/\s|-/g, ""))) {
       setError(t(lang, "enterValidPhone"));
       return;
     }
@@ -203,7 +225,7 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
       } else {
         const { error: insertError } = await supabase.from("purchase_requests").insert({
           customer_phone: cleanPhone,
-          customer_name: name.trim() || null,
+          customer_name: (buyingAsAgent ? agentDisplayName : name.trim()) || null,
           ticket_ids: cart.map((tk) => tk.id),
           total,
           agent_id: resolvedAgentId,
@@ -408,6 +430,8 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
                   )}
                 </div>
               )}
+              {!buyingAsAgent && (
+                <>
               <label style={{ fontSize: 13, fontWeight: 600 }}>
                 {t(lang, "placeholderPhone")}
                 <input
@@ -427,6 +451,8 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
                   placeholder={t(lang, "placeholderName")}
                 />
               </label>
+                </>
+              )}
               {!agentId && (
                 <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginTop: 10 }}>
                   Agent code or email (optional)
@@ -437,6 +463,17 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
                     placeholder="If an agent referred you"
                   />
                 </label>
+              )}
+              {buyingAsAgent && (
+                <p style={{ fontSize: 12, color: "#5A6560", margin: "6px 0 0" }}>
+                  Buying as {agentDisplayName || "you"}. Your phone and name are filled in for you. Clear the agent code
+                  above to enter a customer's details instead.
+                </p>
+              )}
+              {codeIsMine && !agentPhone && (
+                <p style={{ fontSize: 12, color: "#5A6560", margin: "6px 0 0" }}>
+                  Add your phone number in Shop settings to skip the phone and name fields.
+                </p>
               )}
               {error && <p style={{ color: "#B23A2E", fontSize: 13, marginTop: 8 }}>{error}</p>}
               <button
