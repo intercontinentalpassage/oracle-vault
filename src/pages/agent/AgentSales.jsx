@@ -293,7 +293,7 @@ export default function AgentSales() {
                     </>
                   ) : (
                     <button className="ov-btn-sm" onClick={() => startEditCustomer(s)}>
-                      Edit customer
+                      Edit
                     </button>
                   )}
                   <button className="ov-btn-sm" disabled={recalling === s.id} onClick={() => recall(s)}>
