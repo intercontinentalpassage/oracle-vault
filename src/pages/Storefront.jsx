@@ -13,6 +13,7 @@ import TicketResults from "../components/TicketResults";
 import CartDrawer from "../components/CartDrawer";
 import WinnerChecker from "../components/WinnerChecker";
 import BrandBadge from "../components/BrandBadge";
+import AvailableNumbersPhotoCard from "../components/AvailableNumbersPhotoCard";
 import { matchesDigits } from "../lib/ticketMatch";
 
 export default function Storefront() {
@@ -27,6 +28,7 @@ export default function Storefront() {
   const [digits, setDigits] = useState([]);
   const [anywhere, setAnywhere] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
+  const [showAvailablePhoto, setShowAvailablePhoto] = useState(false);
   const { cart } = useCart();
 
   useEffect(() => {
@@ -151,6 +153,15 @@ export default function Storefront() {
               {nextDraw && <div className="ov-next-draw-pill">{t(lang, "nextDraw", { date: nextDraw.label })}</div>}
               <h1>{t(lang, "searchTicketsHeading", { n: availableCount })}</h1>
               <p>{t(lang, "searchTicketsSub")}</p>
+              {staffProfile?.role === "admin" && (
+                <button
+                  className="ov-btn-sm"
+                  style={{ alignSelf: "flex-start" }}
+                  onClick={() => setShowAvailablePhoto(true)}
+                >
+                  Save available numbers as photo
+                </button>
+              )}
             </div>
             <DigitSearch
               lang={lang}
@@ -212,6 +223,12 @@ export default function Storefront() {
       </div>
 
       <CartDrawer lang={lang} open={cartOpen} onClose={() => setCartOpen(false)} />
+      {showAvailablePhoto && (
+        <AvailableNumbersPhotoCard
+          numbers={tickets.filter((tk) => tk.status === "available").map((tk) => tk.number)}
+          onClose={() => setShowAvailablePhoto(false)}
+        />
+      )}
       <WinnerChecker />
     </div>
   );
