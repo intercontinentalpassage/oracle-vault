@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { toPng } from "html-to-image";
+import { savePhoto } from "../lib/savePhoto";
 import { getSiteSetting, useSiteSettingsVersion } from "../lib/siteSettingsStore";
 import BrandBadge from "./BrandBadge";
 
@@ -22,10 +23,10 @@ export default function AvailableNumbersPhotoCard({ numbers, onClose }) {
     setError("");
     try {
       const dataUrl = await toPng(cardRef.current, { pixelRatio: 2, backgroundColor: "#FFFFFF" });
-      const link = document.createElement("a");
-      link.download = `oracle-vault-available-numbers-${Date.now()}.png`;
-      link.href = dataUrl;
-      link.click();
+      await savePhoto(dataUrl, `oracle-vault-available-numbers-${Date.now()}.png`, {
+        title: "Oracle Vault",
+        text: "Available numbers",
+      });
     } catch (e) {
       setError("Couldn't save the image — try again.");
     } finally {

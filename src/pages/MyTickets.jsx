@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { toPng } from "html-to-image";
+import { savePhoto } from "../lib/savePhoto";
 import { supabase } from "../lib/supabaseClient";
 import { t, useLang } from "../lib/i18n";
 import { getCurrencySymbol, getSiteSetting, useSiteSettingsVersion } from "../lib/siteSettingsStore";
@@ -33,10 +34,10 @@ export default function MyTickets() {
     setSavingInvoice(true);
     try {
       const dataUrl = await toPng(invoiceRef.current, { pixelRatio: 2, backgroundColor: "#FFFFFF" });
-      const link = document.createElement("a");
-      link.download = `my-tickets-${Date.now()}.png`;
-      link.href = dataUrl;
-      link.click();
+      await savePhoto(dataUrl, `my-tickets-${Date.now()}.png`, {
+        title: "Oracle Vault",
+        text: "My tickets",
+      });
     } catch {
       setError("Couldn't save the image — try again.");
     } finally {

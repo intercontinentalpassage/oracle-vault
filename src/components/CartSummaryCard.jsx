@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { toPng } from "html-to-image";
+import { savePhoto } from "../lib/savePhoto";
 import { t } from "../lib/i18n";
 import { getCurrencySymbol, getSiteSetting, useSiteSettingsVersion } from "../lib/siteSettingsStore";
 import BrandBadge from "./BrandBadge";
@@ -17,10 +18,10 @@ export default function CartSummaryCard({ lang, cart, total, phone, name, onClos
     setError("");
     try {
       const dataUrl = await toPng(cardRef.current, { pixelRatio: 2, backgroundColor: "#FFFFFF" });
-      const link = document.createElement("a");
-      link.download = `oracle-vault-order-${Date.now()}.png`;
-      link.href = dataUrl;
-      link.click();
+      await savePhoto(dataUrl, `oracle-vault-order-${Date.now()}.png`, {
+        title: shopName || "Oracle Vault",
+        text: "My order",
+      });
     } catch (e) {
       setError("Couldn't save the image — try again.");
     } finally {
