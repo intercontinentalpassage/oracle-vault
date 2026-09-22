@@ -24,6 +24,46 @@ export default function AgentCatalog() {
   const [saving, setSaving] = useState(false);
   const [selected, setSelected] = useState(new Set());
   const [bulkPrice, setBulkPrice] = useState("");
+  const [useExisting, setUseExisting] = useState(false);
+  const [customerQuery, setCustomerQuery] = useState("");
+  const [customerResults, setCustomerResults] = useState([]);
+  const [searchingCustomers, setSearchingCustomers] = useState(false);
+  const customerSearchTimer = useRef(null);
+
+  function searchCustomers(query) {
+    setCustomerQuery(query);
+    clearTimeout(customerSearchTimer.current);
+    if (!query.trim()) {
+      setCustomerResults([]);
+      return;
+    }
+    customerSearchTimer.current = setTimeout(async () => {
+      setSearchingCustomers(true);
+      const q = query.trim();
+      // Scoped to this agent's own customers only, same as the cart's staff-sell search.
+      const { data } = await supabase
+        .from("customers")
+        .select("phone, name")
+        .eq("agent_id", agentId)
+        .or(`phone.ilike.%${q}%,name.ilike.%${q}%`)
+        .limit(8);
+      setCustomerResults(data || []);
+      setSearchingCustomers(false);
+    }, 250);
+  }
+
+  function pickCustomer(c) {
+    setSoldModal((prev) => ({ ...prev, phone: c.phone, name: c.name || "" }));
+    setCustomerQuery("");
+    setCustomerResults([]);
+  }
+
+  function openSoldModal(ticket) {
+    setUseExisting(false);
+    setCustomerQuery("");
+    setCustomerResults([]);
+    setSoldModal({ ticket, phone: "", name: "" });
+  }
 
   function toggleSelected(id) {
     setSelected((prev) => {
@@ -253,7 +293,7 @@ export default function AgentCatalog() {
                     <button
                       className="ov-btn-sm"
                       style={{ marginLeft: 6 }}
-                      onClick={() => setSoldModal({ ticket: tk, phone: "", name: "" })}
+                      onClick={() => openSoldModal(tk)}
                     >
                       Mark sold
                     </button>
@@ -276,6 +316,50 @@ export default function AgentCatalog() {
                 Enter the customer's details. A new customer is created automatically if this phone number hasn't
                 bought from you before.
               </p>
+
+              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, marginBottom: 10 }}>
+                <input
+                  type="checkbox"
+                  checked={useExisting}
+                  onChange={(e) => {
+                    setUseExisting(e.target.checked);
+                    setCustomerQuery("");
+                    setCustomerResults([]);
+                  }}
+                />
+                Existing customer
+              </label>
+              {useExisting && (
+                <div style={{ position: "relative", marginBottom: 14 }}>
+                  <input
+                    className="ov-input"
+                    style={{ margin: 0 }}
+                    value={customerQuery}
+                    onChange={(e) => searchCustomers(e.target.value)}
+                    placeholder="Search by phone or name…"
+                  />
+                  {customerQuery.trim() !== "" && (
+                    <ul className="ov-dropdown-menu" style={{ position: "absolute" }}>
+                      {searchingCustomers ? (
+                        <li className="ov-dropdown-option" style={{ cursor: "default" }}>
+                          Searching…
+                        </li>
+                      ) : customerResults.length === 0 ? (
+                        <li className="ov-dropdown-option" style={{ cursor: "default", color: "#5A6560" }}>
+                          No matches
+                        </li>
+                      ) : (
+                        customerResults.map((c) => (
+                          <li key={c.phone} className="ov-dropdown-option" onClick={() => pickCustomer(c)}>
+                            {c.phone}
+                            {c.name ? ` — ${c.name}` : ""}
+                          </li>
+                        ))
+                      )}
+                    </ul>
+                  )}
+                </div>
+              )}
 
               <label style={{ display: "block", marginBottom: 10 }}>
                 Phone
