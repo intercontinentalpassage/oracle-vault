@@ -58,11 +58,14 @@ export default function AgentCatalog() {
     setCustomerResults([]);
   }
 
-  function openSoldModal(ticket) {
+  function openSoldModal(ticketsToSell) {
+    const available = ticketsToSell.filter((tk) => tk.status === "available");
+    if (available.length === 0) return;
     setUseExisting(false);
     setCustomerQuery("");
     setCustomerResults([]);
-    setSoldModal({ ticket, phone: "", name: "" });
+    setError("");
+    setSoldModal({ tickets: available, phone: "", name: "" });
   }
 
   function toggleSelected(id) {
@@ -132,7 +135,7 @@ export default function AgentCatalog() {
   }
 
   async function confirmMarkSold() {
-    if (!soldModal) return;
+    if (!soldModal || soldModal.tickets.length === 0) return;
     const phone = soldModal.phone.trim();
     if (!phone) {
       setError("Enter the customer's phone number.");
@@ -157,22 +160,26 @@ export default function AgentCatalog() {
         customerId = newCustomer.id;
       }
 
-      const { error: saleError } = await supabase.from("sales").insert({
-        ticket_id: soldModal.ticket.id,
+      const ticketIds = soldModal.tickets.map((tk) => tk.id);
+      const saleRows = soldModal.tickets.map((tk) => ({
+        ticket_id: tk.id,
         customer_id: customerId,
         customer_phone: phone,
         agent_id: agentId,
-        price: soldModal.ticket.price,
-      });
+        price: tk.price,
+      }));
+      const { error: saleError } = await supabase.from("sales").insert(saleRows);
       if (saleError) throw saleError;
 
-      const { error: ticketError } = await supabase
-        .from("tickets")
-        .update({ status: "sold" })
-        .eq("id", soldModal.ticket.id);
+      const { error: ticketError } = await supabase.from("tickets").update({ status: "sold" }).in("id", ticketIds);
       if (ticketError) throw ticketError;
 
       setSoldModal(null);
+      setSelected((prev) => {
+        const next = new Set(prev);
+        ticketIds.forEach((id) => next.delete(id));
+        return next;
+      });
       load();
     } catch (e) {
       setError(e.message || String(e));
@@ -200,6 +207,7 @@ export default function AgentCatalog() {
   const invoiceCurrency = agentCurrency || getCurrencySymbol();
   const invoiceTotal = tickets.reduce((sum, tk) => sum + (Number(tk.price) || 0), 0);
   const filteredTickets = search ? tickets.filter((tk) => tk.number.includes(search)) : tickets;
+  const sellableSelected = tickets.filter((tk) => selected.has(tk.id) && tk.status === "available");
 
   return (
     <div>
@@ -242,6 +250,18 @@ export default function AgentCatalog() {
           <button className="ov-btn-sm primary" onClick={setPriceForSelected} disabled={bulkPrice.trim() === ""}>
             Apply to {selected.size} selected
           </button>
+          <button
+            className="ov-btn-sm"
+            disabled={sellableSelected.length === 0}
+            onClick={() => openSoldModal(sellableSelected)}
+          >
+            Sell {sellableSelected.length || selected.size} selected
+          </button>
+          {sellableSelected.length > 0 && sellableSelected.length < selected.size && (
+            <span style={{ fontSize: 12, color: "#5A6560" }}>
+              ({selected.size - sellableSelected.length} already sold, won't be included)
+            </span>
+          )}
         </div>
       )}
 
@@ -293,7 +313,7 @@ export default function AgentCatalog() {
                     <button
                       className="ov-btn-sm"
                       style={{ marginLeft: 6 }}
-                      onClick={() => openSoldModal(tk)}
+                      onClick={() => openSoldModal([tk])}
                     >
                       Mark sold
                     </button>
@@ -310,8 +330,19 @@ export default function AgentCatalog() {
           <div className="ov-summary-wrap" style={{ maxWidth: 360 }} onClick={(e) => e.stopPropagation()}>
             <div className="ov-summary-card">
               <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>
-                Mark {soldModal.ticket.number} as sold
+                {soldModal.tickets.length === 1
+                  ? `Mark ${soldModal.tickets[0].number} as sold`
+                  : `Mark ${soldModal.tickets.length} tickets as sold`}
               </div>
+              {soldModal.tickets.length > 1 && (
+                <p style={{ fontFamily: "'Space Mono', monospace", fontSize: 13, color: "#5A6560", marginTop: 0, marginBottom: 6 }}>
+                  {soldModal.tickets.map((tk) => tk.number).join(", ")}
+                </p>
+              )}
+              <p style={{ fontSize: 13, fontWeight: 600, marginTop: 0, marginBottom: 14 }}>
+                Total: {invoiceCurrency}
+                {soldModal.tickets.reduce((sum, tk) => sum + (Number(tk.price) || 0), 0).toLocaleString()}
+              </p>
               <p style={{ fontSize: 13, color: "#5A6560", marginTop: 0, marginBottom: 14 }}>
                 Enter the customer's details. A new customer is created automatically if this phone number hasn't
                 bought from you before.
