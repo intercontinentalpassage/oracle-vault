@@ -170,6 +170,18 @@ on `purchase_requests` plus a safe lookup function (see below).
   requests, whose tickets already appear as `sale` rows), and a
   `sold_out_numbers` column: everything for an `expired` request, or the
   numbers dropped from a still-`pending` one.
+- **`sell_tickets_to_customer(p_ticket_ids uuid[], p_phone text, p_name text)`**
+  — sells one or more tickets to one customer atomically (admins, and agents
+  for their own tickets only). Locks the tickets first (id order), then
+  re-checks every one is still `available` (and, for an agent, still theirs);
+  if anything in the batch no longer qualifies, NONE of the batch is sold and
+  no sale rows are created — `{ok:false, code:'unavailable', numbers}` names
+  which tickets. Only on success does it upsert the customer, insert the sale
+  rows, and mark the tickets `sold`, together. Used by the agent catalog's
+  "Mark sold" / "Sell N selected"; replaces an earlier two-step client
+  version (insert sale, then update ticket) that could leave a stray sale row
+  for a ticket that ended up NOT marked sold if another ticket in the same
+  batch had just been sold.
 - **`approve_purchase_request(p_request_id uuid, p_ticket_ids uuid[])`** —
   approves a purchase request atomically (admins from the admin panel, and the
   service role). It locks the tickets first (always in id order), then

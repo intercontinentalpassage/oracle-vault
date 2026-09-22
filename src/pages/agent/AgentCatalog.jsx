@@ -144,40 +144,28 @@ export default function AgentCatalog() {
     setSaving(true);
     setError("");
     try {
-      const { data: existingCustomer } = await supabase
-        .from("customers")
-        .select("id")
-        .eq("phone", phone)
-        .maybeSingle();
-      let customerId = existingCustomer?.id;
-      if (!customerId) {
-        const { data: newCustomer, error: custError } = await supabase
-          .from("customers")
-          .insert({ phone, name: soldModal.name.trim() || null, agent_id: agentId })
-          .select()
-          .single();
-        if (custError) throw custError;
-        customerId = newCustomer.id;
+      // One atomic database step: locks the tickets, re-checks every one is
+      // still available (and still this agent's), then creates the sale rows
+      // and marks them sold together. If any ticket in the batch was already
+      // sold - by a race, a double click, or another tab - NONE of the batch
+      // is sold and no sale rows are created, rather than some silently going
+      // through while others don't.
+      const { data: result, error: rpcError } = await supabase.rpc("sell_tickets_to_customer", {
+        p_ticket_ids: soldModal.tickets.map((tk) => tk.id),
+        p_phone: phone,
+        p_name: soldModal.name.trim() || null,
+      });
+      if (rpcError) throw rpcError;
+      if (!result?.ok) {
+        setError(result?.message || "Couldn't complete this sale.");
+        load(); // show the real, current state
+        return;
       }
-
-      const ticketIds = soldModal.tickets.map((tk) => tk.id);
-      const saleRows = soldModal.tickets.map((tk) => ({
-        ticket_id: tk.id,
-        customer_id: customerId,
-        customer_phone: phone,
-        agent_id: agentId,
-        price: tk.price,
-      }));
-      const { error: saleError } = await supabase.from("sales").insert(saleRows);
-      if (saleError) throw saleError;
-
-      const { error: ticketError } = await supabase.from("tickets").update({ status: "sold" }).in("id", ticketIds);
-      if (ticketError) throw ticketError;
 
       setSoldModal(null);
       setSelected((prev) => {
         const next = new Set(prev);
-        ticketIds.forEach((id) => next.delete(id));
+        soldModal.tickets.forEach((tk) => next.delete(tk.id));
         return next;
       });
       load();
