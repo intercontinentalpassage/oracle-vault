@@ -255,13 +255,7 @@ export default function AgentSales() {
                       />
                     </div>
                   ) : (
-                    <span
-                      style={{ cursor: "pointer", textDecoration: "underline dotted" }}
-                      title="Click to edit"
-                      onClick={() => startEditCustomer(s)}
-                    >
-                      {s.customer_phone || "Walk-in"}
-                    </span>
+                    <span>{s.customer_phone || "Walk-in"}</span>
                   )}
                 </td>
                 <td>
@@ -280,7 +274,7 @@ export default function AgentSales() {
                       Save
                     </button>
                   )}
-                  {editingCustomer[s.id] && (
+                  {editingCustomer[s.id] ? (
                     <>
                       <button
                         className="ov-btn-sm primary"
@@ -297,6 +291,10 @@ export default function AgentSales() {
                         Cancel
                       </button>
                     </>
+                  ) : (
+                    <button className="ov-btn-sm" onClick={() => startEditCustomer(s)}>
+                      Edit customer
+                    </button>
                   )}
                   <button className="ov-btn-sm" disabled={recalling === s.id} onClick={() => recall(s)}>
                     {recalling === s.id ? "Recalling…" : "Recall"}
