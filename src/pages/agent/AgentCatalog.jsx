@@ -24,6 +24,7 @@ export default function AgentCatalog() {
   const [saving, setSaving] = useState(false);
   const [selected, setSelected] = useState(new Set());
   const [bulkPrice, setBulkPrice] = useState("");
+  const [sellingId, setSellingId] = useState(null); // ticket currently being instant-sold, if any
   const [useExisting, setUseExisting] = useState(false);
   const [customerQuery, setCustomerQuery] = useState("");
   const [customerResults, setCustomerResults] = useState([]);
@@ -66,6 +67,38 @@ export default function AgentCatalog() {
     setCustomerResults([]);
     setError("");
     setSoldModal({ tickets: available, phone: "", name: "" });
+  }
+
+  // "Mark sold" on a single row: an instant, walk-in sale — no customer prompt,
+  // no name or phone recorded. (For selling to a known customer, select the
+  // ticket and use "Sell N selected" instead, which still asks for their details.)
+  async function markSoldInstant(ticket) {
+    if (ticket.status !== "available" || sellingId) return;
+    setSellingId(ticket.id);
+    setError("");
+    try {
+      const { data: result, error: rpcError } = await supabase.rpc("sell_tickets_to_customer", {
+        p_ticket_ids: [ticket.id],
+        p_phone: null,
+        p_name: null,
+      });
+      if (rpcError) throw rpcError;
+      if (!result?.ok) {
+        setError(result?.message || "Couldn't mark this ticket as sold.");
+        load();
+        return;
+      }
+      setSelected((prev) => {
+        const next = new Set(prev);
+        next.delete(ticket.id);
+        return next;
+      });
+      load();
+    } catch (e) {
+      setError(e.message || String(e));
+    } finally {
+      setSellingId(null);
+    }
   }
 
   function toggleSelected(id) {
@@ -301,9 +334,10 @@ export default function AgentCatalog() {
                     <button
                       className="ov-btn-sm"
                       style={{ marginLeft: 6 }}
-                      onClick={() => openSoldModal([tk])}
+                      disabled={sellingId === tk.id}
+                      onClick={() => markSoldInstant(tk)}
                     >
-                      Mark sold
+                      {sellingId === tk.id ? "Selling…" : "Mark sold"}
                     </button>
                   )}
                 </td>

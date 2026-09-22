@@ -166,7 +166,7 @@ export default function AgentSales() {
                   <input type="checkbox" checked={selected.has(s.id)} onChange={() => toggleSelected(s.id)} />
                 </td>
                 <td style={{ fontFamily: "'Space Mono', monospace" }}>{s.tickets?.number || "—"}</td>
-                <td>{s.customer_phone}</td>
+                <td>{s.customer_phone || "Walk-in"}</td>
                 <td>
                   <input
                     className="ov-input"

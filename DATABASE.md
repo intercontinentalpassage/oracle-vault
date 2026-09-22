@@ -105,7 +105,12 @@ public); only staff can read/update the queue.
 
 ### `sales`, `invoices`, `refunds`
 - `sales` — one row per completed ticket sale, created when a purchase
-  request is approved. Feeds Agent -> Sales and Agent -> My customers.
+  request is approved, or by `sell_tickets_to_customer` for a direct staff
+  sale. Feeds Agent -> Sales and Agent -> My customers. `customer_id` and
+  `customer_phone` are nullable: a walk-in sale (agent catalog's instant
+  "Mark sold", no customer prompt) leaves both null and never appears in My
+  Tickets, Admin > Customers, or an agent's own Customers page (all keyed by
+  phone) — the UI shows "Walk-in" wherever it displays the phone directly.
 - `invoices` — created when Admin sends a batch of tickets to an agent.
 - `refunds` — an agent requesting tickets be taken back; approving one
   returns those tickets to `available` with `agent_id` cleared.
@@ -176,12 +181,15 @@ on `purchase_requests` plus a safe lookup function (see below).
   re-checks every one is still `available` (and, for an agent, still theirs);
   if anything in the batch no longer qualifies, NONE of the batch is sold and
   no sale rows are created — `{ok:false, code:'unavailable', numbers}` names
-  which tickets. Only on success does it upsert the customer, insert the sale
-  rows, and mark the tickets `sold`, together. Used by the agent catalog's
-  "Mark sold" / "Sell N selected"; replaces an earlier two-step client
-  version (insert sale, then update ticket) that could leave a stray sale row
-  for a ticket that ended up NOT marked sold if another ticket in the same
-  batch had just been sold.
+  which tickets. `p_phone` is optional: blank/null makes it a walk-in sale —
+  no customer is looked up or created, and the sale row's `customer_id` and
+  `customer_phone` are both left `null`. Only on success does it upsert the
+  customer (when a phone was given), insert the sale rows, and mark the
+  tickets `sold`, together. Used by the agent catalog: the per-row "Mark
+  sold" (instant, walk-in, no prompt) and "Sell N selected" (asks for a
+  customer). Replaces an earlier two-step client version (insert sale, then
+  update ticket) that could leave a stray sale row for a ticket that ended up
+  NOT marked sold if another ticket in the same batch had just been sold.
 - **`approve_purchase_request(p_request_id uuid, p_ticket_ids uuid[])`** —
   approves a purchase request atomically (admins from the admin panel, and the
   service role). It locks the tickets first (always in id order), then

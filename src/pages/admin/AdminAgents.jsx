@@ -339,7 +339,7 @@ export default function AdminAgents() {
                         <div style={{ flex: 1 }}>
                           <div style={{ fontFamily: "'Space Mono', monospace" }}>{s.tickets?.number || "—"}</div>
                           <div style={{ fontSize: 12, color: "#5A6560" }}>
-                            {s.customer_phone} · {new Date(s.sold_at).toLocaleDateString()}
+                            {s.customer_phone || "Walk-in"} · {new Date(s.sold_at).toLocaleDateString()}
                           </div>
                         </div>
                         <input
