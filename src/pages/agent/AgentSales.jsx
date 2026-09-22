@@ -88,6 +88,14 @@ export default function AgentSales() {
     setEditingCustomer((prev) => ({ ...prev, [s.id]: { phone: s.customer_phone || "", name: "" } }));
   }
 
+  function cancelEditCustomer(saleId) {
+    setEditingCustomer((prev) => {
+      const next = { ...prev };
+      delete next[saleId];
+      return next;
+    });
+  }
+
   async function saveCustomer(saleId) {
     const draft = editingCustomer[saleId];
     if (!draft) return;
@@ -273,13 +281,22 @@ export default function AgentSales() {
                     </button>
                   )}
                   {editingCustomer[s.id] && (
-                    <button
-                      className="ov-btn-sm primary"
-                      disabled={savingCustomer === s.id}
-                      onClick={() => saveCustomer(s.id)}
-                    >
-                      {savingCustomer === s.id ? "Saving…" : "Save customer"}
-                    </button>
+                    <>
+                      <button
+                        className="ov-btn-sm primary"
+                        disabled={savingCustomer === s.id}
+                        onClick={() => saveCustomer(s.id)}
+                      >
+                        {savingCustomer === s.id ? "Saving…" : "Save customer"}
+                      </button>
+                      <button
+                        className="ov-btn-sm"
+                        disabled={savingCustomer === s.id}
+                        onClick={() => cancelEditCustomer(s.id)}
+                      >
+                        Cancel
+                      </button>
+                    </>
                   )}
                   <button className="ov-btn-sm" disabled={recalling === s.id} onClick={() => recall(s)}>
                     {recalling === s.id ? "Recalling…" : "Recall"}
