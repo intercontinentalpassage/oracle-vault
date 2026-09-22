@@ -13,6 +13,7 @@ export default function AgentCatalog() {
   const [agentCurrency, setAgentCurrency] = useState(null);
   const [agentName, setAgentName] = useState("");
   const [showInvoice, setShowInvoice] = useState(false);
+  const [search, setSearch] = useState("");
   const invoiceRef = useRef(null);
   const [savingInvoice, setSavingInvoice] = useState(false);
   useSiteSettingsVersion();
@@ -158,6 +159,7 @@ export default function AgentCatalog() {
 
   const invoiceCurrency = agentCurrency || getCurrencySymbol();
   const invoiceTotal = tickets.reduce((sum, tk) => sum + (Number(tk.price) || 0), 0);
+  const filteredTickets = search ? tickets.filter((tk) => tk.number.includes(search)) : tickets;
 
   return (
     <div>
@@ -172,6 +174,18 @@ export default function AgentCatalog() {
       <p style={{ fontSize: 13, color: "#5A6560", marginTop: -14, marginBottom: 20 }}>
         Tickets your admin has assigned to you. You can adjust the price shown on your shop page.
       </p>
+
+      {tickets.length > 0 && (
+        <input
+          className="ov-input"
+          style={{ maxWidth: 220, marginTop: 0, marginBottom: 16 }}
+          type="text"
+          inputMode="numeric"
+          placeholder="Search number…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value.replace(/\D/g, ""))}
+        />
+      )}
 
       {error && <p style={{ color: "#B23A2E", fontSize: 13, marginBottom: 12 }}>{error}</p>}
 
@@ -195,6 +209,8 @@ export default function AgentCatalog() {
         <p style={{ color: "#5A6560" }}>Loading…</p>
       ) : tickets.length === 0 ? (
         <p style={{ color: "#5A6560" }}>{hiddenCount > 0 ? "No current tickets." : "No tickets assigned to you yet."}</p>
+      ) : filteredTickets.length === 0 ? (
+        <p style={{ color: "#5A6560" }}>No tickets match "{search}".</p>
       ) : (
         <div className="ov-table-wrap"><table className="ov-table">
           <thead>
@@ -208,7 +224,7 @@ export default function AgentCatalog() {
             </tr>
           </thead>
           <tbody>
-            {tickets.map((tk) => (
+            {filteredTickets.map((tk) => (
               <tr key={tk.id}>
                 <td>
                   <input type="checkbox" checked={selected.has(tk.id)} onChange={() => toggleSelected(tk.id)} />
