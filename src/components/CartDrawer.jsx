@@ -148,7 +148,7 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
         if (matchedAgent) {
           resolvedAgentId = matchedAgent.id;
         } else {
-          setError("That agent code or email wasn't found — check it, or leave it blank to continue without one.");
+          setError(t(lang, "agentCodeNotFound"));
           setSending(false);
           return;
         }
@@ -463,13 +463,12 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
               )}
               {buyingAsAgent && (
                 <p style={{ fontSize: 12, color: "#5A6560", margin: "6px 0 0" }}>
-                  Buying as {agentDisplayName || "you"}. Your phone and name are filled in for you. Clear the agent code
-                  above to enter a customer's details instead.
+                  {t(lang, "buyingAsAgent", { name: agentDisplayName || "you" })}
                 </p>
               )}
               {codeIsMine && !agentPhone && (
                 <p style={{ fontSize: 12, color: "#5A6560", margin: "6px 0 0" }}>
-                  Add your phone number in Shop settings to skip the phone and name fields.
+                  {t(lang, "addPhoneToSkipFields")}
                 </p>
               )}
               {error && <p style={{ color: "#B23A2E", fontSize: 13, marginTop: 8 }}>{error}</p>}
