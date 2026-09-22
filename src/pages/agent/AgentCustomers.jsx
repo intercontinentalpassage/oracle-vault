@@ -130,6 +130,7 @@ export default function AgentCustomers() {
       byPhone[c.phone] = { phone: c.phone, name: c.name, count: 0, total: 0, lastSale: null };
     });
     (salesRes.data || []).forEach((s) => {
+      if (!s.customer_phone) return; // walk-in sale (no customer recorded) - not a customer to list
       if (!byPhone[s.customer_phone]) {
         byPhone[s.customer_phone] = { phone: s.customer_phone, name: null, count: 0, total: 0, lastSale: s.sold_at };
       }

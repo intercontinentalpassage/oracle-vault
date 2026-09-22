@@ -190,6 +190,23 @@ on `purchase_requests` plus a safe lookup function (see below).
   customer). Replaces an earlier two-step client version (insert sale, then
   update ticket) that could leave a stray sale row for a ticket that ended up
   NOT marked sold if another ticket in the same batch had just been sold.
+- **`recall_sale(p_sale_id uuid)`** — undoes one sale: deletes that sale row
+  and, only if it was the ticket's *last* remaining sale row, puts the ticket
+  back to `available`. Admins can recall any sale; agents only their own.
+  Replaces the app's old direct `sales.delete()` calls for this, which never
+  actually worked — `sales` has no DELETE policy, so those silently removed 0
+  rows under RLS. Admin > Tickets' "Recall" button had therefore been putting
+  the ticket back to `available` **without** removing its old sale record;
+  Agent > Sales' new "Recall" button uses this from the start. (Fixed on
+  2026-09-20: 3 tickets in production had exactly this — a stale sale row
+  still attached to an already-`available` ticket; those stale rows were
+  deleted as a one-off cleanup.)
+- **`set_sale_customer(p_sale_id uuid, p_phone text, p_name text)`** — adds or
+  corrects the customer on an *existing* sale (chiefly: filling in a walk-in
+  sale's phone/name afterward, from Agent > Sales). Upserts the customer by
+  phone (same upsert as `sell_tickets_to_customer`) and sets the sale's
+  `customer_id` and `customer_phone`. Refuses a blank phone. Admins can edit
+  any sale; agents only their own.
 - **`approve_purchase_request(p_request_id uuid, p_ticket_ids uuid[])`** —
   approves a purchase request atomically (admins from the admin panel, and the
   service role). It locks the tickets first (always in id order), then

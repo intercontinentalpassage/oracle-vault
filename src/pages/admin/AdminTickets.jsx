@@ -182,10 +182,25 @@ export default function AdminTickets() {
     if (!confirm(`Recall ${tk.number} back to available? This also removes its sale record, if any.`)) return;
     setError("");
     try {
-      const { error: saleDeleteError } = await supabase.from("sales").delete().eq("ticket_id", tk.id);
-      if (saleDeleteError) throw saleDeleteError;
-      const { error: updateError } = await supabase.from("tickets").update({ status: "available" }).eq("id", tk.id);
-      if (updateError) throw updateError;
+      // A ticket normally has at most one sale row, but recall every one that
+      // exists for it (via the recall_sale database function, which actually
+      // deletes the row - the app's old direct sales.delete() call here never
+      // worked: `sales` has no DELETE policy, so it silently removed 0 rows,
+      // leaving a stale sale behind even after the ticket went back to
+      // available).
+      const { data: saleRows, error: fetchError } = await supabase.from("sales").select("id").eq("ticket_id", tk.id);
+      if (fetchError) throw fetchError;
+      for (const row of saleRows || []) {
+        const { data: result, error: rpcError } = await supabase.rpc("recall_sale", { p_sale_id: row.id });
+        if (rpcError) throw rpcError;
+        if (!result?.ok && result?.code !== "not_found") throw new Error(result?.message || "Couldn't recall this sale.");
+      }
+      // No sale row existed at all (rare, but the button is available whenever
+      // status is "sold") - still put the ticket back to available.
+      if (!saleRows || saleRows.length === 0) {
+        const { error: updateError } = await supabase.from("tickets").update({ status: "available" }).eq("id", tk.id);
+        if (updateError) throw updateError;
+      }
       load();
     } catch (e) {
       setError(e.message || String(e));

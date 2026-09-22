@@ -10,6 +10,9 @@ export default function AgentSales() {
   const [loading, setLoading] = useState(true);
   const [agentCurrency, setAgentCurrency] = useState(null);
   const [editing, setEditing] = useState({});
+  const [editingCustomer, setEditingCustomer] = useState({}); // { [saleId]: { phone, name } }
+  const [savingCustomer, setSavingCustomer] = useState(null);
+  const [recalling, setRecalling] = useState(null);
   const [selected, setSelected] = useState(new Set());
   const [bulkPrice, setBulkPrice] = useState("");
   const [error, setError] = useState("");
@@ -78,6 +81,61 @@ export default function AgentSales() {
     }
     setBulkPrice("");
     setSelected(new Set());
+    load();
+  }
+
+  function startEditCustomer(s) {
+    setEditingCustomer((prev) => ({ ...prev, [s.id]: { phone: s.customer_phone || "", name: "" } }));
+  }
+
+  async function saveCustomer(saleId) {
+    const draft = editingCustomer[saleId];
+    if (!draft) return;
+    setSavingCustomer(saleId);
+    setError("");
+    const { data: result, error: rpcError } = await supabase.rpc("set_sale_customer", {
+      p_sale_id: saleId,
+      p_phone: draft.phone,
+      p_name: draft.name || null,
+    });
+    setSavingCustomer(null);
+    if (rpcError) {
+      setError(rpcError.message);
+      return;
+    }
+    if (!result?.ok) {
+      setError(result?.message || "Couldn't save the customer's details.");
+      return;
+    }
+    setEditingCustomer((prev) => {
+      const next = { ...prev };
+      delete next[saleId];
+      return next;
+    });
+    load();
+  }
+
+  async function recall(sale) {
+    if (recalling) return;
+    const label = sale.tickets?.number ? `ticket ${sale.tickets.number}` : "this sale";
+    if (!confirm(`Recall ${label}? This removes the sale and puts the ticket back to available.`)) return;
+    setRecalling(sale.id);
+    setError("");
+    const { data: result, error: rpcError } = await supabase.rpc("recall_sale", { p_sale_id: sale.id });
+    setRecalling(null);
+    if (rpcError) {
+      setError(rpcError.message);
+      return;
+    }
+    if (!result?.ok) {
+      setError(result?.message || "Couldn't recall this sale.");
+      return;
+    }
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.delete(sale.id);
+      return next;
+    });
     load();
   }
 
@@ -166,7 +224,38 @@ export default function AgentSales() {
                   <input type="checkbox" checked={selected.has(s.id)} onChange={() => toggleSelected(s.id)} />
                 </td>
                 <td style={{ fontFamily: "'Space Mono', monospace" }}>{s.tickets?.number || "—"}</td>
-                <td>{s.customer_phone || "Walk-in"}</td>
+                <td>
+                  {editingCustomer[s.id] ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 140 }}>
+                      <input
+                        className="ov-input"
+                        style={{ margin: 0, padding: "6px 8px", fontSize: 12 }}
+                        value={editingCustomer[s.id].phone}
+                        placeholder="Phone"
+                        onChange={(e) =>
+                          setEditingCustomer((prev) => ({ ...prev, [s.id]: { ...prev[s.id], phone: e.target.value } }))
+                        }
+                      />
+                      <input
+                        className="ov-input"
+                        style={{ margin: 0, padding: "6px 8px", fontSize: 12 }}
+                        value={editingCustomer[s.id].name}
+                        placeholder="Name (optional)"
+                        onChange={(e) =>
+                          setEditingCustomer((prev) => ({ ...prev, [s.id]: { ...prev[s.id], name: e.target.value } }))
+                        }
+                      />
+                    </div>
+                  ) : (
+                    <span
+                      style={{ cursor: "pointer", textDecoration: "underline dotted" }}
+                      title="Click to edit"
+                      onClick={() => startEditCustomer(s)}
+                    >
+                      {s.customer_phone || "Walk-in"}
+                    </span>
+                  )}
+                </td>
                 <td>
                   <input
                     className="ov-input"
@@ -177,12 +266,24 @@ export default function AgentSales() {
                   />
                 </td>
                 <td>{new Date(s.sold_at).toLocaleDateString()}</td>
-                <td>
+                <td style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {editing[s.id] !== undefined && (
                     <button className="ov-btn-sm primary" onClick={() => savePrice(s.id)}>
                       Save
                     </button>
                   )}
+                  {editingCustomer[s.id] && (
+                    <button
+                      className="ov-btn-sm primary"
+                      disabled={savingCustomer === s.id}
+                      onClick={() => saveCustomer(s.id)}
+                    >
+                      {savingCustomer === s.id ? "Saving…" : "Save customer"}
+                    </button>
+                  )}
+                  <button className="ov-btn-sm" disabled={recalling === s.id} onClick={() => recall(s)}>
+                    {recalling === s.id ? "Recalling…" : "Recall"}
+                  </button>
                 </td>
               </tr>
             ))}
