@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { saveButtonLabel, usePreparedPhoto } from "../lib/usePreparedPhoto";
+import { useSessionProfile } from "../lib/useSessionProfile";
 import { supabase } from "../lib/supabaseClient";
 import { t, useLang } from "../lib/i18n";
 import { getCurrencySymbol, getSiteSetting, useSiteSettingsVersion } from "../lib/siteSettingsStore";
@@ -25,6 +26,7 @@ export default function MyTickets() {
   useSiteSettingsVersion();
   const currency = getCurrencySymbol();
   const [showInvoice, setShowInvoice] = useState(false);
+  const { profile: staffProfile } = useSessionProfile();
 
   // An approved request and its sold tickets are the same purchase, and the tickets
   // already appear as "sale" rows - so approved requests are not listed a second time.
@@ -133,6 +135,7 @@ export default function MyTickets() {
             customerName={results[0]?.customer_name}
             purchases={purchases}
             invoiceTotal={invoiceTotal}
+            canHidePrice={staffProfile?.role === "admin" || staffProfile?.role === "agent"}
             onClose={() => setShowInvoice(false)}
           />
         )}
@@ -143,8 +146,9 @@ export default function MyTickets() {
 
 // The "My tickets" receipt shown as a photo. Its own component so the photo
 // can be prepared in the background as soon as it opens (see usePreparedPhoto).
-function InvoicePhoto({ lang, currency, customerName, purchases, invoiceTotal, onClose }) {
+function InvoicePhoto({ lang, currency, customerName, purchases, invoiceTotal, canHidePrice, onClose }) {
   const invoiceRef = useRef(null);
+  const [hidePrice, setHidePrice] = useState(false);
   const [createdAt] = useState(() => new Date().toLocaleString());
   const [filename] = useState(() => `my-tickets-${Date.now()}.png`);
   const photo = usePreparedPhoto(invoiceRef, filename);
@@ -171,16 +175,20 @@ function InvoicePhoto({ lang, currency, customerName, purchases, invoiceTotal, o
                 <span style={{ fontFamily: "'Space Mono', monospace", letterSpacing: "0.05em" }}>
                   {r.ticket_number || "—"} <span style={{ fontSize: 11, color: "#5A6560" }}>({statusLabel(lang, r.status)})</span>
                 </span>
-                <span>{currency}{Number(r.total || 0).toLocaleString()}</span>
+                {!hidePrice && <span>{currency}{Number(r.total || 0).toLocaleString()}</span>}
               </div>
             ))}
           </div>
 
-          <div className="ov-summary-divider" />
-          <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: 16 }}>
-            <span>{t(lang, "total")}</span>
-            <span style={{ fontFamily: "'Space Mono', monospace" }}>{currency}{invoiceTotal.toLocaleString()}</span>
-          </div>
+          {!hidePrice && (
+            <>
+              <div className="ov-summary-divider" />
+              <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: 16 }}>
+                <span>{t(lang, "total")}</span>
+                <span style={{ fontFamily: "'Space Mono', monospace" }}>{currency}{invoiceTotal.toLocaleString()}</span>
+              </div>
+            </>
+          )}
 
           <div className="ov-summary-divider" />
           <p style={{ textAlign: "center", fontSize: 12, color: "#5A6560", margin: 0 }}>
@@ -190,6 +198,13 @@ function InvoicePhoto({ lang, currency, customerName, purchases, invoiceTotal, o
 
         {photo.status === "error" && (
           <p style={{ color: "#B23A2E", fontSize: 12, marginTop: 8, textAlign: "center" }}>Couldn't save the image — try again.</p>
+        )}
+
+        {canHidePrice && (
+          <label className="ov-photo-option">
+            <input type="checkbox" checked={hidePrice} onChange={(e) => setHidePrice(e.target.checked)} />
+            <span>Hide price</span>
+          </label>
         )}
 
         <div style={{ display: "flex", gap: 8, marginTop: 12 }}>

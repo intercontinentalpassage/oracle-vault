@@ -578,3 +578,12 @@ button, select, input { font-family: inherit; }
   width: 28px; height: 28px; border: none; border-radius: 8px;
   background: rgba(255,255,255,0.12); color: #fff; cursor: pointer;
 }
+
+/* Options under a photo card (e.g. Hide price) — not part of the saved photo */
+.ov-photo-option {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: fit-content; margin: 12px auto 0; padding: 10px 16px;
+  background: #fff; color: #0E1512; border-radius: 10px;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.ov-photo-option input { width: 18px; height: 18px; accent-color: #0F7A63; cursor: pointer; }

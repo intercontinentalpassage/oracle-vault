@@ -4,8 +4,10 @@ import { t } from "../lib/i18n";
 import { getCurrencySymbol, getSiteSetting, useSiteSettingsVersion } from "../lib/siteSettingsStore";
 import BrandBadge from "./BrandBadge";
 
-export default function CartSummaryCard({ lang, cart, total, phone, name, onClose, currencyOverride, shopName }) {
+export default function CartSummaryCard({ lang, cart, total, phone, name, onClose, currencyOverride, shopName, canHidePrice }) {
   const cardRef = useRef(null);
+  // Admin/agents can hide each ticket's price and the total before saving.
+  const [hidePrice, setHidePrice] = useState(false);
   // Frozen when the card opens, so the photo doesn't change every second.
   const [createdAt] = useState(() => new Date().toLocaleString());
   useSiteSettingsVersion();
@@ -35,16 +37,20 @@ export default function CartSummaryCard({ lang, cart, total, phone, name, onClos
             {cart.map((tk) => (
               <div key={tk.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
                 <span style={{ fontFamily: "'Space Mono', monospace", letterSpacing: "0.05em" }}>{tk.number}</span>
-                <span>{currency}{Number(tk.price || 0).toLocaleString()}</span>
+                {!hidePrice && <span>{currency}{Number(tk.price || 0).toLocaleString()}</span>}
               </div>
             ))}
           </div>
 
-          <div className="ov-summary-divider" />
-          <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: 16 }}>
-            <span>{t(lang, "total")}</span>
-            <span style={{ fontFamily: "'Space Mono', monospace" }}>{currency}{total.toLocaleString()}</span>
-          </div>
+          {!hidePrice && (
+            <>
+              <div className="ov-summary-divider" />
+              <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: 16 }}>
+                <span>{t(lang, "total")}</span>
+                <span style={{ fontFamily: "'Space Mono', monospace" }}>{currency}{total.toLocaleString()}</span>
+              </div>
+            </>
+          )}
 
           {(name || phone) && (
             <div style={{ marginTop: 10, fontSize: 12, color: "#5A6560" }}>
@@ -61,6 +67,13 @@ export default function CartSummaryCard({ lang, cart, total, phone, name, onClos
 
         {photo.status === "error" && (
           <p style={{ color: "#B23A2E", fontSize: 12, marginTop: 8, textAlign: "center" }}>Couldn't save the image — try again.</p>
+        )}
+
+        {canHidePrice && (
+          <label className="ov-photo-option">
+            <input type="checkbox" checked={hidePrice} onChange={(e) => setHidePrice(e.target.checked)} />
+            <span>Hide price</span>
+          </label>
         )}
 
         <div style={{ display: "flex", gap: 8, marginTop: 12 }}>

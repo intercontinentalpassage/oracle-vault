@@ -519,6 +519,7 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
             name={sent && lastOrder ? lastOrder.name : name}
             currencyOverride={currencyOverride}
             shopName={shopName}
+            canHidePrice={staffProfile?.role === "admin" || staffProfile?.role === "agent"}
             onClose={() => setShowSummary(false)}
           />
         )}
