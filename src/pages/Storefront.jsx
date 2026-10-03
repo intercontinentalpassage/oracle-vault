@@ -223,12 +223,20 @@ export default function Storefront() {
           <div className="ov-footer-links ov-footer-stack">
             <button
               type="button"
-              className="primary ov-link-button"
+              className="ov-back-to-top"
               onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
             >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M12 19V5M5 12l7-7 7 7" />
+              </svg>
               {t(lang, "backToTop")}
             </button>
-            {!staffProfile && <a href="#/login">{t(lang, "login")}</a>}
+            {/* Staff-only, so kept quiet: customers shouldn't think they need an account */}
+            {!staffProfile && (
+              <a href="#/login" className="ov-footer-login">
+                {t(lang, "login")}
+              </a>
+            )}
           </div>
           {/* Empty right column keeps Back to top / Login centered on wide screens */}
           <div className="ov-footer-spacer" aria-hidden="true" />
