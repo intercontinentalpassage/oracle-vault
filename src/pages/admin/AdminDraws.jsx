@@ -200,6 +200,31 @@ export default function AdminDraws() {
     load();
   }
 
+  // Removes a draw's results (e.g. wrong numbers saved or published by
+  // mistake) but keeps the draw and its tickets. A published draw is
+  // unpublished and its winner marks removed first.
+  async function clearResults(draw) {
+    const msg = draw.published
+      ? `Clear the results of "${draw.label}"? It will be unpublished, customers will no longer see these results, and its winner marks will be removed. The draw and its tickets stay.`
+      : `Clear the results of "${draw.label}"? The draw and its tickets stay.`;
+    if (!confirm(msg)) return;
+    setPublishingId(draw.id);
+    setError("");
+    try {
+      if (draw.published) await clearWinners(draw);
+      const { error: clearError } = await supabase
+        .from("draws")
+        .update({ tiers: [], published: false })
+        .eq("id", draw.id);
+      if (clearError) throw clearError;
+      if (winnersFor?.id === draw.id) setWinnersFor(null);
+    } catch (e) {
+      setError(e.message || String(e));
+    }
+    setPublishingId(null);
+    load();
+  }
+
   async function deleteDraw(id) {
     if (!confirm("Delete this draw?")) return;
     const { error: deleteError } = await supabase.from("draws").delete().eq("id", id);
@@ -369,7 +394,19 @@ export default function AdminDraws() {
                       View winners
                     </button>
                   )}
-                  <button className="ov-btn-sm danger" onClick={() => deleteDraw(d.id)}>
+                  {hasResults(d) && (
+                    <button className="ov-btn-sm" onClick={() => clearResults(d)} disabled={publishingId === d.id}>
+                      Clear results
+                    </button>
+                  )}
+                  {/* A draw that tickets belong to can't be deleted (the
+                      database protects them); clear its results instead. */}
+                  <button
+                    className="ov-btn-sm danger"
+                    onClick={() => deleteDraw(d.id)}
+                    disabled={ticketCount(d) > 0}
+                    title={ticketCount(d) > 0 ? "Tickets belong to this draw, so it can't be deleted. Use Clear results to remove wrong results." : undefined}
+                  >
                     Delete
                   </button>
                 </td>
