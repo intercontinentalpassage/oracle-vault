@@ -1,6 +1,11 @@
 import { lazy, Suspense } from "react";
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { CartProvider } from "./lib/CartContext";
+import {
+  AdminTickets, AdminGroups, AdminPurchaseRequests, AdminAgents, AdminCustomers, AdminRefunds,
+  AdminLogins, AdminDraws, AdminTranslations, AdminSettings,
+  AgentCatalog, AgentCustomers, AgentSales, AgentRefunds, AgentSettings,
+} from "./lib/panelPages";
 import Storefront from "./pages/Storefront";
 import AgentShop from "./pages/AgentShop";
 import MyTickets from "./pages/MyTickets";
@@ -19,23 +24,8 @@ const Login = lazy(() => import("./pages/Login"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 
 const AdminLayout = lazy(() => import("./pages/admin/AdminLayout"));
-const AdminTickets = lazy(() => import("./pages/admin/AdminTickets"));
-const AdminGroups = lazy(() => import("./pages/admin/AdminGroups"));
-const AdminPurchaseRequests = lazy(() => import("./pages/admin/AdminPurchaseRequests"));
-const AdminAgents = lazy(() => import("./pages/admin/AdminAgents"));
-const AdminCustomers = lazy(() => import("./pages/admin/AdminCustomers"));
-const AdminRefunds = lazy(() => import("./pages/admin/AdminRefunds"));
-const AdminLogins = lazy(() => import("./pages/admin/AdminLogins"));
-const AdminDraws = lazy(() => import("./pages/admin/AdminDraws"));
-const AdminTranslations = lazy(() => import("./pages/admin/AdminTranslations"));
-const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
 
 const AgentLayout = lazy(() => import("./pages/agent/AgentLayout"));
-const AgentCatalog = lazy(() => import("./pages/agent/AgentCatalog"));
-const AgentCustomers = lazy(() => import("./pages/agent/AgentCustomers"));
-const AgentSales = lazy(() => import("./pages/agent/AgentSales"));
-const AgentRefunds = lazy(() => import("./pages/agent/AgentRefunds"));
-const AgentSettings = lazy(() => import("./pages/agent/AgentSettings"));
 
 function RouteLoading() {
   return (

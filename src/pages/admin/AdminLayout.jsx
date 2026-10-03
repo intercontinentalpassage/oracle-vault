@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { NavLink, Navigate, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { useSessionProfile } from "../../lib/useSessionProfile";
 import BrandBadge from "../../components/BrandBadge";
+import { ADMIN_PAGES, PanelLoading, usePreloadPages } from "../../lib/panelPages";
 
 const NAV = [
   { to: "/admin/tickets", label: "Tickets" },
@@ -30,6 +31,10 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Once the panel is open, fetch its other pages in the background so the
+  // first click on each sidebar tab is instant.
+  usePreloadPages(ADMIN_PAGES, profile?.role === "admin");
 
   if (loading) return null;
   if (!session) return <Navigate to="/login" replace />;
@@ -75,7 +80,10 @@ export default function AdminLayout() {
         </button>
       </aside>
       <main className="ov-admin-content">
-        <Outlet />
+        {/* Only the content area waits for a page to load; the sidebar stays put. */}
+        <Suspense fallback={<PanelLoading />}>
+          <Outlet />
+        </Suspense>
       </main>
     </div>
   );

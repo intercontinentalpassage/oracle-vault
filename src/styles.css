@@ -637,3 +637,12 @@ button, select, input { font-family: inherit; }
 }
 .ov-datepicker-link.primary { color: #0F7A63; }
 .ov-datepicker-link:hover { background: #F4F8F6; }
+
+/* Content-area loader in the Admin/Agent panels (sidebar stays visible) */
+.ov-panel-loading { display: flex; justify-content: center; padding: 60px 0; }
+.ov-panel-spinner {
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 3px solid #E6F4EF; border-top-color: #0F7A63;
+  animation: ov-spin 0.8s linear infinite;
+}
+@keyframes ov-spin { to { transform: rotate(360deg); } }

@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { NavLink, Navigate, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import { useSessionProfile } from "../../lib/useSessionProfile";
 import BrandBadge from "../../components/BrandBadge";
+import { AGENT_PAGES, PanelLoading, usePreloadPages } from "../../lib/panelPages";
 
 const NAV = [
   { to: "/agent/catalog", label: "My catalog" },
@@ -36,6 +37,10 @@ export default function AgentLayout() {
       .single()
       .then(({ data }) => setAgentSlug(data?.slug || null));
   }, [profile?.agent_id]);
+
+  // Once the panel is open, fetch its other pages in the background so the
+  // first click on each sidebar tab is instant.
+  usePreloadPages(AGENT_PAGES, profile?.role === "agent");
 
   if (loading) return null;
   if (!session) return <Navigate to="/login" replace />;
@@ -93,7 +98,10 @@ export default function AgentLayout() {
         </button>
       </aside>
       <main className="ov-admin-content">
-        <Outlet context={{ agentId: profile.agent_id }} />
+        {/* Only the content area waits for a page to load; the sidebar stays put. */}
+        <Suspense fallback={<PanelLoading />}>
+          <Outlet context={{ agentId: profile.agent_id }} />
+        </Suspense>
       </main>
     </div>
   );
