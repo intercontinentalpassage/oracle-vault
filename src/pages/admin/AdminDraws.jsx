@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { getCurrencySymbol, useSiteSettingsVersion } from "../../lib/siteSettingsStore";
 import DatePicker from "../../components/DatePicker";
@@ -19,6 +19,8 @@ export default function AdminDraws() {
   // Short confirmation shown after saving, e.g. when results went into the
   // existing draw for that date instead of creating a second one.
   const [notice, setNotice] = useState("");
+  const pdfInputRef = useRef(null);
+  const [pdfName, setPdfName] = useState("");
 
   const [label, setLabel] = useState("");
   const [date, setDate] = useState("");
@@ -71,7 +73,10 @@ export default function AdminDraws() {
 
   async function handlePdfUpload(e) {
     const file = e.target.files?.[0];
+    // Clear the picker so choosing the same file again still triggers a read.
+    e.target.value = "";
     if (!file) return;
+    setPdfName(file.name);
     setParsing(true);
     setParseError("");
     setParsedFromPdf(false);
@@ -276,8 +281,25 @@ export default function AdminDraws() {
           when adding tickets), the results are saved into that draw. Review the numbers, save, then publish
           it from the list.
         </p>
-        <input type="file" accept="application/pdf" onChange={handlePdfUpload} disabled={parsing} />
-        {parsing && <p style={{ fontSize: 13, color: "#5A6560", marginTop: 8 }}>Reading PDF…</p>}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <button className="ov-btn-sm ov-upload-btn" onClick={() => pdfInputRef.current?.click()} disabled={parsing}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" />
+            </svg>
+            {parsing ? "Reading PDF…" : "Choose PDF"}
+          </button>
+          <span style={{ fontSize: 13, color: pdfName ? "#0E1512" : "#8A948F", overflowWrap: "anywhere" }}>
+            {pdfName || "No file chosen"}
+          </span>
+        </div>
+        {/* The browser's own file picker is hidden; the button above opens it. */}
+        <input
+          ref={pdfInputRef}
+          type="file"
+          accept="application/pdf"
+          style={{ display: "none" }}
+          onChange={handlePdfUpload}
+        />
         {parseError && <p style={{ color: "#B23A2E", fontSize: 13, marginTop: 8 }}>{parseError}</p>}
         {parsedFromPdf && (
           <p style={{ color: "#0B5C4A", fontSize: 13, marginTop: 8 }}>

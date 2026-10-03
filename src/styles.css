@@ -646,3 +646,6 @@ button, select, input { font-family: inherit; }
   animation: ov-spin 0.8s linear infinite;
 }
 @keyframes ov-spin { to { transform: rotate(360deg); } }
+
+/* File upload button (opens a hidden native file picker) */
+.ov-upload-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; font-size: 13px; }
