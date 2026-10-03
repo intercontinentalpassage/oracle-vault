@@ -1,6 +1,5 @@
 import { useRef, useState } from "react";
-import { toPng } from "html-to-image";
-import { savePhoto } from "../lib/savePhoto";
+import { saveButtonLabel, usePreparedPhoto } from "../lib/usePreparedPhoto";
 import { getSiteSetting, useSiteSettingsVersion } from "../lib/siteSettingsStore";
 import BrandBadge from "./BrandBadge";
 
@@ -11,27 +10,16 @@ import BrandBadge from "./BrandBadge";
 // approach as the invoice/cart "Save as photo".
 export default function AvailableNumbersPhotoCard({ numbers, onClose }) {
   const cardRef = useRef(null);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
   useSiteSettingsVersion();
   const channel = getSiteSetting("telegram_channel");
   const thankYou = getSiteSetting("invoice_thank_you") || "Thank you for your purchase!";
+  // Frozen when the card opens, so the photo can't change under the user.
+  const [createdOn] = useState(() => new Date().toLocaleDateString());
+  const [filename] = useState(() => `oracle-vault-available-numbers-${Date.now()}.png`);
+  const photo = usePreparedPhoto(cardRef, filename);
 
-  async function saveAsPhoto() {
-    if (!cardRef.current) return;
-    setSaving(true);
-    setError("");
-    try {
-      const dataUrl = await toPng(cardRef.current, { pixelRatio: 2, backgroundColor: "#FFFFFF" });
-      await savePhoto(dataUrl, `oracle-vault-available-numbers-${Date.now()}.png`, {
-        title: "Oracle Vault",
-        text: "Available numbers",
-      });
-    } catch (e) {
-      setError("Couldn't save the image — try again.");
-    } finally {
-      setSaving(false);
-    }
+  function saveAsPhoto() {
+    photo.save({ title: "Oracle Vault", text: "Available numbers" });
   }
 
   return (
@@ -52,7 +40,7 @@ export default function AvailableNumbersPhotoCard({ numbers, onClose }) {
             <BrandBadge size={36} />
             <div>
               <div style={{ fontWeight: 700, fontSize: 16 }}>Oracle Vault</div>
-              <div style={{ fontSize: 11, color: "#5A6560" }}>{new Date().toLocaleDateString()}</div>
+              <div style={{ fontSize: 11, color: "#5A6560" }}>{createdOn}</div>
             </div>
           </div>
 
@@ -110,14 +98,16 @@ export default function AvailableNumbersPhotoCard({ numbers, onClose }) {
           <p style={{ textAlign: "center", fontSize: 12, color: "#5A6560", margin: 0 }}>{thankYou}</p>
         </div>
 
-        {error && <p style={{ color: "#B23A2E", fontSize: 12, marginTop: 8, textAlign: "center" }}>{error}</p>}
+        {photo.status === "error" && (
+          <p style={{ color: "#B23A2E", fontSize: 12, marginTop: 8, textAlign: "center" }}>Couldn't save the image — try again.</p>
+        )}
 
         <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
           <button className="ov-btn-sm" style={{ flex: 1 }} onClick={onClose}>
             Cancel
           </button>
-          <button className="ov-btn-sm primary" style={{ flex: 1 }} onClick={saveAsPhoto} disabled={saving}>
-            {saving ? "Saving…" : "Save as photo"}
+          <button className="ov-btn-sm primary" style={{ flex: 1 }} onClick={saveAsPhoto} disabled={photo.status === "saving"}>
+            {saveButtonLabel(photo.status)}
           </button>
         </div>
       </div>

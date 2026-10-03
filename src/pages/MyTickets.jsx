@@ -1,7 +1,6 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { toPng } from "html-to-image";
-import { savePhoto } from "../lib/savePhoto";
+import { saveButtonLabel, usePreparedPhoto } from "../lib/usePreparedPhoto";
 import { supabase } from "../lib/supabaseClient";
 import { t, useLang } from "../lib/i18n";
 import { getCurrencySymbol, getSiteSetting, useSiteSettingsVersion } from "../lib/siteSettingsStore";
@@ -26,24 +25,6 @@ export default function MyTickets() {
   useSiteSettingsVersion();
   const currency = getCurrencySymbol();
   const [showInvoice, setShowInvoice] = useState(false);
-  const invoiceRef = useRef(null);
-  const [savingInvoice, setSavingInvoice] = useState(false);
-
-  async function saveInvoiceAsPhoto() {
-    if (!invoiceRef.current) return;
-    setSavingInvoice(true);
-    try {
-      const dataUrl = await toPng(invoiceRef.current, { pixelRatio: 2, backgroundColor: "#FFFFFF" });
-      await savePhoto(dataUrl, `my-tickets-${Date.now()}.png`, {
-        title: "Oracle Vault",
-        text: "My tickets",
-      });
-    } catch {
-      setError("Couldn't save the image — try again.");
-    } finally {
-      setSavingInvoice(false);
-    }
-  }
 
   // An approved request and its sold tickets are the same purchase, and the tickets
   // already appear as "sale" rows - so approved requests are not listed a second time.
@@ -146,58 +127,84 @@ export default function MyTickets() {
         )}
 
         {showInvoice && (
-          <div className="ov-summary-overlay" onClick={() => setShowInvoice(false)} style={{ position: "fixed" }}>
-            <div className="ov-summary-wrap" onClick={(e) => e.stopPropagation()}>
-              <div className="ov-summary-card" ref={invoiceRef}>
-                <div className="ov-summary-header">
-                  <BrandBadge size={32} />
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 15 }}>Oracle Vault</div>
-                    <div style={{ fontSize: 11, color: "#5A6560" }}>{new Date().toLocaleString()}</div>
-                  </div>
-                </div>
+          <InvoicePhoto
+            lang={lang}
+            currency={currency}
+            customerName={results[0]?.customer_name}
+            purchases={purchases}
+            invoiceTotal={invoiceTotal}
+            onClose={() => setShowInvoice(false)}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
 
-                {results[0]?.customer_name && (
-                  <p style={{ fontSize: 13, color: "#5A6560", margin: "8px 0 0" }}>{results[0].customer_name}</p>
-                )}
+// The "My tickets" receipt shown as a photo. Its own component so the photo
+// can be prepared in the background as soon as it opens (see usePreparedPhoto).
+function InvoicePhoto({ lang, currency, customerName, purchases, invoiceTotal, onClose }) {
+  const invoiceRef = useRef(null);
+  const [createdAt] = useState(() => new Date().toLocaleString());
+  const [filename] = useState(() => `my-tickets-${Date.now()}.png`);
+  const photo = usePreparedPhoto(invoiceRef, filename);
 
-                <div className="ov-summary-divider" />
-
-                <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 360, overflowY: "auto" }}>
-                  {purchases.map((r) => (
-                    <div key={r.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
-                      <span style={{ fontFamily: "'Space Mono', monospace", letterSpacing: "0.05em" }}>
-                        {r.ticket_number || "—"} <span style={{ fontSize: 11, color: "#5A6560" }}>({statusLabel(lang, r.status)})</span>
-                      </span>
-                      <span>{currency}{Number(r.total || 0).toLocaleString()}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="ov-summary-divider" />
-
-                <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: 16 }}>
-                  <span>{t(lang, "total")}</span>
-                  <span style={{ fontFamily: "'Space Mono', monospace" }}>{currency}{invoiceTotal.toLocaleString()}</span>
-                </div>
-
-                <div className="ov-summary-divider" />
-                <p style={{ textAlign: "center", fontSize: 12, color: "#5A6560", margin: 0 }}>
-                  {getSiteSetting("invoice_thank_you") || "Thank you for your purchase!"}
-                </p>
-              </div>
-
-              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                <button className="ov-btn-sm" style={{ flex: 1 }} onClick={() => setShowInvoice(false)}>
-                  Close
-                </button>
-                <button className="ov-btn-sm primary" style={{ flex: 1 }} onClick={saveInvoiceAsPhoto} disabled={savingInvoice}>
-                  {savingInvoice ? "Saving…" : "Save as photo"}
-                </button>
-              </div>
+  return (
+    <div className="ov-summary-overlay" onClick={onClose} style={{ position: "fixed" }}>
+      <div className="ov-summary-wrap" onClick={(e) => e.stopPropagation()}>
+        <div className="ov-summary-card" ref={invoiceRef}>
+          <div className="ov-summary-header">
+            <BrandBadge size={32} />
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 15 }}>Oracle Vault</div>
+              <div style={{ fontSize: 11, color: "#5A6560" }}>{createdAt}</div>
             </div>
           </div>
+
+          {customerName && <p style={{ fontSize: 13, color: "#5A6560", margin: "8px 0 0" }}>{customerName}</p>}
+
+          <div className="ov-summary-divider" />
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 360, overflowY: "auto" }}>
+            {purchases.map((r) => (
+              <div key={r.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
+                <span style={{ fontFamily: "'Space Mono', monospace", letterSpacing: "0.05em" }}>
+                  {r.ticket_number || "—"} <span style={{ fontSize: 11, color: "#5A6560" }}>({statusLabel(lang, r.status)})</span>
+                </span>
+                <span>{currency}{Number(r.total || 0).toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="ov-summary-divider" />
+          <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: 16 }}>
+            <span>{t(lang, "total")}</span>
+            <span style={{ fontFamily: "'Space Mono', monospace" }}>{currency}{invoiceTotal.toLocaleString()}</span>
+          </div>
+
+          <div className="ov-summary-divider" />
+          <p style={{ textAlign: "center", fontSize: 12, color: "#5A6560", margin: 0 }}>
+            {getSiteSetting("invoice_thank_you") || "Thank you for your purchase!"}
+          </p>
+        </div>
+
+        {photo.status === "error" && (
+          <p style={{ color: "#B23A2E", fontSize: 12, marginTop: 8, textAlign: "center" }}>Couldn't save the image — try again.</p>
         )}
+
+        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+          <button className="ov-btn-sm" style={{ flex: 1 }} onClick={onClose}>
+            Close
+          </button>
+          <button
+            className="ov-btn-sm primary"
+            style={{ flex: 1 }}
+            onClick={() => photo.save({ title: "Oracle Vault", text: "My tickets" })}
+            disabled={photo.status === "saving"}
+          >
+            {saveButtonLabel(photo.status)}
+          </button>
+        </div>
       </div>
     </div>
   );
