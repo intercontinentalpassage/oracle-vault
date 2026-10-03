@@ -10,7 +10,7 @@ import TelegramIcon from "./TelegramIcon";
 import TelegramPhotoCard from "./TelegramPhotoCard";
 
 export default function CartDrawer({ lang, open, onClose, agentId, currencyOverride, shopName, onSold }) {
-  const { cart, remove, clear } = useCart();
+  const { cart, remove, clear, markSelling, unmarkSelling } = useCart();
   const { profile: staffProfile } = useSessionProfile();
   // "Staff" mode = selling directly: tickets are marked sold at once, no approval.
   // Admins can do that anywhere; an agent only on their OWN shop page. On the main
@@ -162,6 +162,7 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
         }
 
         const ids = cart.map((tk) => tk.id);
+        markSelling(ids);
         const { data: updatedTickets, error: ticketError } = await supabase
           .from("tickets")
           .update({ status: "sold" })
@@ -240,6 +241,7 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
     } catch (e) {
       setError(e.message || String(e));
     } finally {
+      unmarkSelling();
       setSending(false);
     }
   }

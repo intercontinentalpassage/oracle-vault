@@ -163,6 +163,20 @@ Customers never get a Supabase Auth account, so there's no "customer"
 role in RLS — their access is entirely through the public-insert policy
 on `purchase_requests` plus a safe lookup function (see below).
 
+## Realtime
+
+The `tickets` table is in the `supabase_realtime` publication, so the main
+storefront and agent shops update live when tickets are sold, added, moved or
+deleted (see `src/lib/useLiveTickets.js`). Without it the shops still work,
+they just stop updating until refreshed. To turn it on:
+
+```sql
+alter publication supabase_realtime add table public.tickets;
+```
+
+Live events follow the same RLS as normal reads (`tickets_public_read`), so
+visitors only receive ticket columns they could already load.
+
 ## Database functions
 
 - **`lookup_my_tickets(p_phone text)`** — the only way "My Tickets"

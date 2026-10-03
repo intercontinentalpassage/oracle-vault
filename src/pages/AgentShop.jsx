@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { t, useLang } from "../lib/i18n";
@@ -15,36 +15,55 @@ import CartDrawer from "../components/CartDrawer";
 import WinnerChecker from "../components/WinnerChecker";
 import BrandBadge from "../components/BrandBadge";
 import { matchesDigits } from "../lib/ticketMatch";
+import { useLiveTickets } from "../lib/useLiveTickets";
+import { useCartGuard } from "../lib/useCartGuard";
+import { visibleOnly } from "../lib/ticketVisibility";
+import CartSoldNotice from "../components/CartSoldNotice";
 
 export default function AgentShop() {
   const { slug } = useParams();
   const [lang, setLang] = useLang();
   const { profile: staffProfile } = useSessionProfile();
   const [agent, setAgent] = useState(null);
-  const [tickets, setTickets] = useState([]);
+  const [allTickets, setAllTickets] = useState([]); // every ticket in this shop, incl. past draws
+  const [draws, setDraws] = useState([]);
   const [groups, setGroups] = useState([]);
   const [resultsDraw, setResultsDraw] = useState(null);
-  const [nextDraw, setNextDraw] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [digits, setDigits] = useState([]);
   const [anywhere, setAnywhere] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const { cart } = useCart();
+  const cartGuard = useCartGuard();
+  const mountedRef = useRef(true);
+  const loadSeqRef = useRef(0);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      setLoading(true);
-      setNotFound(false);
+  // Loads the agent and everything their shop shows. quiet = a background
+  // resync: no loading screen, and on failure keep showing what we have.
+  const loadData = useCallback(
+    async ({ quiet = false } = {}) => {
+      const seq = ++loadSeqRef.current;
+      const isCurrent = () => mountedRef.current && seq === loadSeqRef.current;
+      if (!quiet) {
+        setLoading(true);
+        setNotFound(false);
+      }
       const agentRes = await supabase
         .from("agents")
         .select("*")
         .eq("slug", slug)
         .eq("active", true)
         .maybeSingle();
-      if (cancelled) return;
-      if (agentRes.error || !agentRes.data) {
+      if (!isCurrent()) return;
+      if (agentRes.error) {
+        if (quiet) throw agentRes.error;
+        setNotFound(true);
+        setLoading(false);
+        return;
+      }
+      if (!agentRes.data) {
+        // Shop was deactivated (or never existed) — show that, even mid-visit.
         setNotFound(true);
         setLoading(false);
         return;
@@ -63,39 +82,54 @@ export default function AgentShop() {
           .maybeSingle(),
         supabase.from("draws").select("*"),
       ]);
-      if (cancelled) return;
+      if (!isCurrent()) return;
+      if (quiet && ticketsRes.error) throw ticketsRes.error;
       const ticketsData = ticketsRes.data || [];
+      setAllTickets(ticketsData);
+      setDraws(allDrawsRes.data || []);
       setGroups(groupsRes.data || []);
       setResultsDraw(resultsDrawRes.data || null);
-
-      // Next-draw + expiry filtering computed locally from the draws batch
-      // already fetched above — no extra network round-trip needed.
-      const today = new Date().toISOString().slice(0, 10);
-      const byId = {};
-      (allDrawsRes.data || []).forEach((d) => (byId[d.id] = d));
-      const referencedDrawIds = new Set(
-        ticketsData.filter((tk) => tk.status === "available" && tk.draw_id).map((tk) => tk.draw_id)
-      );
-      const upcoming = (allDrawsRes.data || [])
-        .filter((d) => referencedDrawIds.has(d.id) && d.draw_date >= today)
-        .sort((a, b) => (a.draw_date < b.draw_date ? -1 : 1));
-      setNextDraw(upcoming[0] || null);
-      const visibleTickets = ticketsData.filter((tk) => {
-        if (!tk.draw_id) return true;
-        const d = byId[tk.draw_id];
-        return !d || d.draw_date >= today;
-      });
-      if (cancelled) return;
-      setTickets(visibleTickets);
-      const maxLen = Math.max(6, ...visibleTickets.map((tk) => tk.number.length));
-      setDigits(Array(maxLen).fill(""));
+      const maxLen = Math.max(6, ...visibleOnly(ticketsData, allDrawsRes.data || []).map((tk) => tk.number.length));
+      // Keep whatever the customer has typed unless the number length changed.
+      setDigits((prev) => (prev.length === maxLen ? prev : Array(maxLen).fill("")));
       setLoading(false);
-    }
-    load();
+    },
+    [slug]
+  );
+
+  useEffect(() => {
+    mountedRef.current = true;
+    loadData();
     return () => {
-      cancelled = true;
+      mountedRef.current = false;
     };
-  }, [slug]);
+  }, [loadData]);
+
+  // Next draw + expired-draw hiding, worked out from the loaded data so live
+  // updates keep them correct too (same rules as the main storefront).
+  const { tickets, nextDraw } = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const referencedDrawIds = new Set(
+      allTickets.filter((tk) => tk.status === "available" && tk.draw_id).map((tk) => tk.draw_id)
+    );
+    const upcoming = draws
+      .filter((d) => referencedDrawIds.has(d.id) && d.draw_date >= today)
+      .sort((a, b) => (a.draw_date < b.draw_date ? -1 : 1));
+    return { tickets: visibleOnly(allTickets, draws), nextDraw: upcoming[0] || null };
+  }, [allTickets, draws]);
+
+  useLiveTickets({
+    channelName: `agent-shop-tickets-${slug}`,
+    enabled: !!agent && !loading && !notFound,
+    belongsHere: (row) => !!agent && row.agent_id === agent.id,
+    setTickets: setAllTickets,
+    resync: async () => {
+      await loadData({ quiet: true });
+      await cartGuard.recheck();
+    },
+    onGone: cartGuard.dropIds,
+    shouldResync: (row) => row.draw_id && !draws.some((d) => d.id === row.draw_id),
+  });
 
   const digitLength = digits.length || 6;
   const availableCount = useMemo(() => tickets.filter((tk) => tk.status === "available").length, [tickets]);
@@ -109,7 +143,7 @@ export default function AgentShop() {
   // in this page's own copy of the list so they disappear immediately.
   function markSoldLocally(ids) {
     const sold = new Set(ids);
-    setTickets((prev) => prev.map((tk) => (sold.has(tk.id) ? { ...tk, status: "sold" } : tk)));
+    setAllTickets((prev) => prev.map((tk) => (sold.has(tk.id) ? { ...tk, status: "sold" } : tk)));
   }
 
   function clearSearch() {
@@ -242,6 +276,7 @@ export default function AgentShop() {
         shopName={agent.name}
         onSold={markSoldLocally}
       />
+      <CartSoldNotice lang={lang} numbers={cartGuard.removedNumbers} onDismiss={cartGuard.dismiss} />
       <WinnerChecker />
     </div>
   );

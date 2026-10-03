@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 
 const CART_KEY = "oracle-vault:cart";
 const CartContext = createContext(null);
@@ -32,12 +32,28 @@ export function CartProvider({ children }) {
   function clear() {
     setCart([]);
   }
+  const removeMany = useCallback((ids) => {
+    const drop = new Set(ids);
+    setCart((prev) => prev.filter((t) => !drop.has(t.id)));
+  }, []);
+
+  // Tickets this browser is in the middle of selling (staff Sell). Live updates
+  // for them are our own sale, so the cart guard must not treat them as
+  // "sold to someone else".
+  const sellingRef = useRef(new Set());
+  const markSelling = useCallback((ids) => {
+    sellingRef.current = new Set(ids);
+  }, []);
+  const unmarkSelling = useCallback(() => {
+    sellingRef.current = new Set();
+  }, []);
+  const isSelling = useCallback((id) => sellingRef.current.has(id), []);
   function has(id) {
     return cart.some((t) => t.id === id);
   }
 
   return (
-    <CartContext.Provider value={{ cart, add, remove, clear, has }}>
+    <CartContext.Provider value={{ cart, add, remove, clear, has, removeMany, markSelling, unmarkSelling, isSelling }}>
       {children}
     </CartContext.Provider>
   );

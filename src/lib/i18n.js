@@ -57,6 +57,8 @@ export const I18N = {
     buyingAsAgent: "Buying as {name}. Your phone and name are filled in for you. Clear the agent code above to enter a customer's details instead.",
     addPhoneToSkipFields: "Add your phone number in Shop settings to skip the phone and name fields.",
     cartCount: "Cart · {n}",
+    cartNumbersJustSold: "Just sold, removed from your cart: {numbers}",
+    close: "Close",
     nextDraw: "Next draw · {date}",
     searchTicketsHeading: "Search {n} tickets by any digit.",
     searchTicketsSub: "Fill only the boxes you care about. Matching tickets appear instantly, grouped by prize.",

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabaseClient";
 import { t, useLang } from "../lib/i18n";
@@ -15,14 +15,18 @@ import WinnerChecker from "../components/WinnerChecker";
 import BrandBadge from "../components/BrandBadge";
 import AvailableNumbersPhotoCard from "../components/AvailableNumbersPhotoCard";
 import { matchesDigits } from "../lib/ticketMatch";
+import { useLiveTickets } from "../lib/useLiveTickets";
+import { useCartGuard } from "../lib/useCartGuard";
+import CartSoldNotice from "../components/CartSoldNotice";
+import { visibleOnly } from "../lib/ticketVisibility";
 
 export default function Storefront() {
   const [lang, setLang] = useLang();
   const { profile: staffProfile } = useSessionProfile();
-  const [tickets, setTickets] = useState([]);
+  const [allTickets, setAllTickets] = useState([]); // every main-shop ticket, incl. past draws
+  const [draws, setDraws] = useState([]);
   const [groups, setGroups] = useState([]);
   const [resultsDraw, setResultsDraw] = useState(null); // latest published results, shown in the numbers banner
-  const [nextDraw, setNextDraw] = useState(null); // the draw current available tickets are for
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [digits, setDigits] = useState([]);
@@ -30,70 +34,90 @@ export default function Storefront() {
   const [cartOpen, setCartOpen] = useState(false);
   const [showAvailablePhoto, setShowAvailablePhoto] = useState(false);
   const { cart } = useCart();
+  const cartGuard = useCartGuard();
+  const mountedRef = useRef(true);
+  const loadSeqRef = useRef(0);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
+  // Loads everything the storefront shows. quiet = a background resync:
+  // no loading screen, and on failure keep showing what we already have.
+  const loadData = useCallback(async ({ quiet = false } = {}) => {
+    const seq = ++loadSeqRef.current;
+    if (!quiet) {
       setLoading(true);
       setLoadError("");
-      try {
-        const [ticketsRes, groupsRes, resultsDrawRes, allDrawsRes] = await Promise.all([
-          supabase.from("tickets").select("*").is("agent_id", null).order("number"),
-          supabase.from("groups").select("*").order("sort_order"),
-          supabase
-            .from("draws")
-            .select("*")
-            .eq("published", true)
-            .order("draw_date", { ascending: false })
-            .limit(1)
-            .maybeSingle(),
-          supabase.from("draws").select("*"),
-        ]);
-        if (ticketsRes.error) throw ticketsRes.error;
-        if (groupsRes.error) throw groupsRes.error;
-        if (resultsDrawRes.error) throw resultsDrawRes.error;
-        if (cancelled) return;
-
-        const ticketsData = ticketsRes.data || [];
-        setGroups(groupsRes.data || []);
-        setResultsDraw(resultsDrawRes.data || null);
-
-        // "Next draw" reads from whichever draw the currently-available
-        // tickets were entered under (set in Admin when adding tickets),
-        // not from published results — those are for a draw that already
-        // happened. Tickets tied to a draw whose date has already passed
-        // are treated as expired and hidden from the storefront entirely.
-        // All draws were already fetched above in the same batch, so this
-        // is computed locally — no extra network round-trip.
-        const today = new Date().toISOString().slice(0, 10);
-        const byId = {};
-        (allDrawsRes.data || []).forEach((d) => (byId[d.id] = d));
-        const referencedDrawIds = new Set(
-          ticketsData.filter((tk) => tk.status === "available" && tk.draw_id).map((tk) => tk.draw_id)
-        );
-        const upcoming = (allDrawsRes.data || [])
-          .filter((d) => referencedDrawIds.has(d.id) && d.draw_date >= today)
-          .sort((a, b) => (a.draw_date < b.draw_date ? -1 : 1));
-        setNextDraw(upcoming[0] || null);
-        const visibleTickets = ticketsData.filter((tk) => {
-          if (!tk.draw_id) return true;
-          const d = byId[tk.draw_id];
-          return !d || d.draw_date >= today;
-        });
-        setTickets(visibleTickets);
-        const maxLen = Math.max(6, ...visibleTickets.map((tk) => tk.number.length));
-        setDigits(Array(maxLen).fill(""));
-      } catch (e) {
-        if (!cancelled) setLoadError(e.message || String(e));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
     }
-    load();
-    return () => {
-      cancelled = true;
-    };
+    try {
+      const [ticketsRes, groupsRes, resultsDrawRes, allDrawsRes] = await Promise.all([
+        supabase.from("tickets").select("*").is("agent_id", null).order("number"),
+        supabase.from("groups").select("*").order("sort_order"),
+        supabase
+          .from("draws")
+          .select("*")
+          .eq("published", true)
+          .order("draw_date", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        supabase.from("draws").select("*"),
+      ]);
+      if (ticketsRes.error) throw ticketsRes.error;
+      if (groupsRes.error) throw groupsRes.error;
+      if (resultsDrawRes.error) throw resultsDrawRes.error;
+      // Ignore a slower, older load that finishes after a newer one.
+      if (!mountedRef.current || seq !== loadSeqRef.current) return;
+
+      const ticketsData = ticketsRes.data || [];
+      setAllTickets(ticketsData);
+      setDraws(allDrawsRes.data || []);
+      setGroups(groupsRes.data || []);
+      setResultsDraw(resultsDrawRes.data || null);
+      const maxLen = Math.max(6, ...visibleOnly(ticketsData, allDrawsRes.data || []).map((tk) => tk.number.length));
+      // Keep whatever the customer has typed unless the number length changed.
+      setDigits((prev) => (prev.length === maxLen ? prev : Array(maxLen).fill("")));
+    } catch (e) {
+      if (!quiet && mountedRef.current) setLoadError(e.message || String(e));
+      if (quiet) throw e;
+    } finally {
+      if (!quiet && mountedRef.current) setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    loadData();
+    return () => {
+      mountedRef.current = false;
+    };
+  }, [loadData]);
+
+  // "Next draw" reads from whichever draw the currently-available tickets
+  // were entered under (set in Admin when adding tickets), not from
+  // published results — those are for a draw that already happened.
+  // Tickets tied to a draw whose date has already passed are treated as
+  // expired and hidden from the storefront entirely. Both are worked out
+  // here from the loaded data, so live updates keep them correct too.
+  const { tickets, nextDraw } = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const referencedDrawIds = new Set(
+      allTickets.filter((tk) => tk.status === "available" && tk.draw_id).map((tk) => tk.draw_id)
+    );
+    const upcoming = draws
+      .filter((d) => referencedDrawIds.has(d.id) && d.draw_date >= today)
+      .sort((a, b) => (a.draw_date < b.draw_date ? -1 : 1));
+    return { tickets: visibleOnly(allTickets, draws), nextDraw: upcoming[0] || null };
+  }, [allTickets, draws]);
+
+  useLiveTickets({
+    channelName: "storefront-tickets",
+    enabled: !loading && !loadError,
+    belongsHere: (row) => row.agent_id == null,
+    setTickets: setAllTickets,
+    resync: async () => {
+      await loadData({ quiet: true });
+      await cartGuard.recheck();
+    },
+    onGone: cartGuard.dropIds,
+    shouldResync: (row) => row.draw_id && !draws.some((d) => d.id === row.draw_id),
+  });
 
   const digitLength = digits.length || 6;
   const availableCount = useMemo(() => tickets.filter((tk) => tk.status === "available").length, [tickets]);
@@ -110,7 +134,7 @@ export default function Storefront() {
   // in this page's own copy of the list so they disappear immediately.
   function markSoldLocally(ids) {
     const sold = new Set(ids);
-    setTickets((prev) => prev.map((tk) => (sold.has(tk.id) ? { ...tk, status: "sold" } : tk)));
+    setAllTickets((prev) => prev.map((tk) => (sold.has(tk.id) ? { ...tk, status: "sold" } : tk)));
   }
 
   function clearSearch() {
@@ -230,6 +254,7 @@ export default function Storefront() {
       </div>
 
       <CartDrawer lang={lang} open={cartOpen} onClose={() => setCartOpen(false)} onSold={markSoldLocally} />
+      <CartSoldNotice lang={lang} numbers={cartGuard.removedNumbers} onDismiss={cartGuard.dismiss} />
       {showAvailablePhoto && (
         <AvailableNumbersPhotoCard
           numbers={tickets.filter((tk) => tk.status === "available").map((tk) => tk.number)}
