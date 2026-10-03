@@ -9,7 +9,7 @@ import CartSummaryCard from "./CartSummaryCard";
 import TelegramIcon from "./TelegramIcon";
 import TelegramPhotoCard from "./TelegramPhotoCard";
 
-export default function CartDrawer({ lang, open, onClose, agentId, currencyOverride, shopName }) {
+export default function CartDrawer({ lang, open, onClose, agentId, currencyOverride, shopName, onSold }) {
   const { cart, remove, clear } = useCart();
   const { profile: staffProfile } = useSessionProfile();
   // "Staff" mode = selling directly: tickets are marked sold at once, no approval.
@@ -232,6 +232,9 @@ export default function CartDrawer({ lang, open, onClose, agentId, currencyOverr
 
       setSent(true);
       setLastOrder({ cart, total, phone: cleanPhone, name: name.trim() });
+      // Tell the page these tickets are sold so they leave the list right
+      // away, instead of staying on screen until the page is refreshed.
+      if (isStaff && onSold) onSold(cart.map((tk) => tk.id));
       clear();
       if (isStaff) setShowSummary(true);
     } catch (e) {

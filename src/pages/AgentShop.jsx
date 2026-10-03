@@ -105,6 +105,13 @@ export default function AgentShop() {
     return tickets.filter((tk) => tk.status === "available" && matchesDigits(tk.number, digits, anywhere)).length;
   }, [tickets, digits, anywhere]);
 
+  // Called by the cart after staff complete a Sell: mark those tickets sold
+  // in this page's own copy of the list so they disappear immediately.
+  function markSoldLocally(ids) {
+    const sold = new Set(ids);
+    setTickets((prev) => prev.map((tk) => (sold.has(tk.id) ? { ...tk, status: "sold" } : tk)));
+  }
+
   function clearSearch() {
     setDigits(Array(digitLength).fill(""));
   }
@@ -233,6 +240,7 @@ export default function AgentShop() {
         agentId={agent.id}
         currencyOverride={agent.currency_symbol}
         shopName={agent.name}
+        onSold={markSoldLocally}
       />
       <WinnerChecker />
     </div>

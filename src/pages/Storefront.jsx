@@ -106,6 +106,13 @@ export default function Storefront() {
     ? `${matchCount} match${matchCount === 1 ? "" : "es"}`
     : "All tickets shown";
 
+  // Called by the cart after staff complete a Sell: mark those tickets sold
+  // in this page's own copy of the list so they disappear immediately.
+  function markSoldLocally(ids) {
+    const sold = new Set(ids);
+    setTickets((prev) => prev.map((tk) => (sold.has(tk.id) ? { ...tk, status: "sold" } : tk)));
+  }
+
   function clearSearch() {
     setDigits(Array(digitLength).fill(""));
   }
@@ -222,7 +229,7 @@ export default function Storefront() {
         )}
       </div>
 
-      <CartDrawer lang={lang} open={cartOpen} onClose={() => setCartOpen(false)} />
+      <CartDrawer lang={lang} open={cartOpen} onClose={() => setCartOpen(false)} onSold={markSoldLocally} />
       {showAvailablePhoto && (
         <AvailableNumbersPhotoCard
           numbers={tickets.filter((tk) => tk.status === "available").map((tk) => tk.number)}
