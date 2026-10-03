@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { getCurrencySymbol, useSiteSettingsVersion } from "../../lib/siteSettingsStore";
 import Dropdown from "../../components/Dropdown";
+import DatePicker from "../../components/DatePicker";
 
 export default function AdminTickets() {
   useSiteSettingsVersion();
@@ -417,9 +418,9 @@ export default function AdminTickets() {
             </label>
             <label>
               Draw date
-              <input
+              <DatePicker
                 className="ov-input"
-                type="date"
+                
                 value={newDrawDate}
                 onChange={(e) => setNewDrawDate(e.target.value)}
               />

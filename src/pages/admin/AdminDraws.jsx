@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { getCurrencySymbol, useSiteSettingsVersion } from "../../lib/siteSettingsStore";
+import DatePicker from "../../components/DatePicker";
 
 const emptyTier = () => ({ label: "", prize: "", numbers: "" });
 
@@ -228,7 +229,7 @@ export default function AdminDraws() {
           </label>
           <label>
             Draw date
-            <input className="ov-input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <DatePicker className="ov-input" value={date} onChange={(e) => setDate(e.target.value)} />
           </label>
         </div>
 

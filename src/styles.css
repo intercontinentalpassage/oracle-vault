@@ -587,3 +587,41 @@ button, select, input { font-family: inherit; }
   font-size: 14px; font-weight: 600; cursor: pointer;
 }
 .ov-photo-option input { width: 18px; height: 18px; accent-color: #0F7A63; cursor: pointer; }
+
+/* Themed date picker (replaces the phone's built-in calendar) */
+.ov-datepicker-icon { flex-shrink: 0; color: #0F7A63; }
+.ov-datepicker-popup {
+  z-index: 90; padding: 12px; box-sizing: border-box;
+  background: #FFFFFF; border: 1px solid #DDE3E0; border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(14,21,18,.16);
+  font-family: Sora, system-ui, sans-serif; color: #0E1512;
+  animation: ov-fade-in-down 0.15s ease;
+}
+.ov-datepicker-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.ov-datepicker-title { font-size: 14px; font-weight: 700; }
+.ov-datepicker-nav {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; border-radius: 10px; border: 1px solid #DDE3E0;
+  background: #FFFFFF; color: #0E1512; cursor: pointer;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+.ov-datepicker-nav:hover { background: #F4F8F6; border-color: #B9C4BF; }
+.ov-datepicker-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.ov-datepicker-weekday { text-align: center; font-size: 11px; font-weight: 700; color: #5A6560; padding: 6px 0; }
+.ov-datepicker-day {
+  aspect-ratio: 1; min-height: 34px; border: none; border-radius: 10px;
+  background: transparent; color: #0E1512; font-family: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: background-color 0.12s ease, color 0.12s ease;
+}
+.ov-datepicker-day:hover { background: #F4F8F6; }
+.ov-datepicker-day.outside { color: #B9C4BF; }
+.ov-datepicker-day.today { box-shadow: inset 0 0 0 1.5px #0F7A63; color: #0B5C4A; }
+.ov-datepicker-day.selected { background: #0F7A63; color: #FFFFFF; box-shadow: none; }
+.ov-datepicker-day:focus-visible, .ov-datepicker-nav:focus-visible, .ov-datepicker-link:focus-visible { outline: 2px solid #0F7A63; outline-offset: 2px; }
+.ov-datepicker-foot { display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid #EEF1EF; }
+.ov-datepicker-link {
+  border: none; background: none; font-family: inherit; font-size: 13px; font-weight: 700;
+  color: #5A6560; padding: 6px 8px; border-radius: 8px; cursor: pointer;
+}
+.ov-datepicker-link.primary { color: #0F7A63; }
+.ov-datepicker-link:hover { background: #F4F8F6; }
