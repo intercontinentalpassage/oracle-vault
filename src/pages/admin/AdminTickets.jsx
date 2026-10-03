@@ -62,8 +62,18 @@ export default function AdminTickets() {
 
   async function createDrawInline() {
     if (!newDrawLabel.trim() || !newDrawDate) return;
-    setCreatingDraw(true);
     setError("");
+    // One draw per date: if it already exists, select it instead of making a
+    // duplicate (duplicates left the ticket-holding draw stuck as a draft).
+    const existing = draws.find((d) => d.draw_date === newDrawDate);
+    if (existing) {
+      setBulkDrawId(existing.id);
+      setNewDrawLabel("");
+      setNewDrawDate("");
+      setShowNewDraw(false);
+      return;
+    }
+    setCreatingDraw(true);
     const { data, error: insertError } = await supabase
       .from("draws")
       .insert({ label: newDrawLabel.trim(), draw_date: newDrawDate, tiers: [], published: false })
