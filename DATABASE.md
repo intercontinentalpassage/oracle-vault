@@ -57,8 +57,13 @@ it via `draw_id` before results exist) and for published results (once
 | label | text | e.g. "16 September 2026" |
 | draw_date | date | used for expiry checks and sorting |
 | tiers | jsonb | `[{label, prize, numbers: [...]}, ...]` |
-| published | boolean | publishing triggers winner-tagging on matching tickets |
+| published | boolean | publishing tags winners among this draw's own tickets |
 | created_at | timestamptz | |
+
+One draw per date (unique index `draws_one_per_date` on `draw_date`): the
+draw your tickets are attached to is the same row that later gets the
+results and is published. A draw that tickets belong to can't be deleted
+(`tickets_draw_id_fkey`); use Clear results in Admin > Draws instead.
 
 ### `tickets`
 The core inventory table.
