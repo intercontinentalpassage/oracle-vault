@@ -16,10 +16,8 @@ export default function AdminDraws() {
   const [parseError, setParseError] = useState("");
   const [parsedFromPdf, setParsedFromPdf] = useState(false);
   const [publishingId, setPublishingId] = useState(null);
-  // The draw whose results are being entered, or null when adding a new draw.
-  // Results go INTO an existing draw (the one your tickets are attached to)
-  // instead of creating a second draw for the same date.
-  const [editingId, setEditingId] = useState(null);
+  // Short confirmation shown after saving, e.g. when results went into the
+  // existing draw for that date instead of creating a second one.
   const [notice, setNotice] = useState("");
 
   const [label, setLabel] = useState("");
@@ -65,27 +63,10 @@ export default function AdminDraws() {
   }
 
   function resetForm() {
-    setEditingId(null);
     setLabel("");
     setDate("");
     setTiers([emptyTier()]);
     setParsedFromPdf(false);
-  }
-
-  // "Add results" on a draw row: load that draw into the form.
-  function startAddResults(draw) {
-    setEditingId(draw.id);
-    setLabel(draw.label || "");
-    setDate(draw.draw_date || "");
-    setTiers(
-      hasResults(draw)
-        ? draw.tiers.map((t) => ({ label: t.label, prize: t.prize, numbers: (t.numbers || []).join(", ") }))
-        : [emptyTier()]
-    );
-    setParsedFromPdf(false);
-    setNotice("");
-    setError("");
-    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function handlePdfUpload(e) {
@@ -107,15 +88,13 @@ export default function AdminDraws() {
         }))
       );
       setParsedFromPdf(true);
+      setNotice("");
       // Results PDF for a draw that already exists (e.g. created when adding
-      // tickets): put the results into that draw instead of a new one.
-      if (!editingId) {
-        const existing = findDrawForDate(result.drawDateIso);
-        if (existing && !existing.published) {
-          setEditingId(existing.id);
-          setLabel(existing.label);
-          setNotice(`These results will be added to the existing draw "${existing.label}".`);
-        }
+      // tickets): say so — saving puts the results into that draw.
+      const existing = findDrawForDate(result.drawDateIso);
+      if (existing && !existing.published) {
+        setLabel(existing.label);
+        setNotice(`These results will be saved into the existing draw "${existing.label}".`);
       }
     } catch (err) {
       setParseError(err.message || String(err));
@@ -140,19 +119,17 @@ export default function AdminDraws() {
           .filter(Boolean),
       }));
 
-    // Which draw to save into: the one chosen with "Add results", or an
-    // existing draw on the same date, otherwise a new one.
-    let targetId = editingId;
-    if (!targetId) {
-      const existing = findDrawForDate(date);
-      if (existing && existing.published) {
-        setError(
-          `A published draw for this date already exists ("${existing.label}"). Unpublish it first, then use Add results to change its results.`
-        );
-        return;
-      }
-      if (existing) targetId = existing.id;
+    // One draw per date: save into the existing draw for this date (the one
+    // your tickets are attached to) if there is one, otherwise create it.
+    // Saving never publishes — use Publish in the list below.
+    const existing = findDrawForDate(date);
+    if (existing && existing.published) {
+      setError(
+        `"${existing.label}" is already published. Unpublish it in the list below first, then save again to change its results.`
+      );
+      return;
     }
+    const targetId = existing?.id || null;
 
     setSaving(true);
     const fields = { label: label.trim(), draw_date: date, tiers: tiersPayload };
@@ -164,7 +141,7 @@ export default function AdminDraws() {
       setError(saveError.message);
       return;
     }
-    if (targetId && !editingId) setNotice(`Saved into the existing draw for this date.`);
+    setNotice(targetId ? `Saved into the existing draw "${existing.label}". Publish it from the list below.` : "Draw saved.");
     resetForm();
     load();
   }
@@ -230,7 +207,6 @@ export default function AdminDraws() {
       setError(deleteError.message);
       return;
     }
-    if (editingId === id) resetForm();
     load();
   }
 
@@ -272,7 +248,8 @@ export default function AdminDraws() {
         <p style={{ fontSize: 12, color: "#5A6560", margin: "4px 0 12px" }}>
           Upload the official 6-digit (L6) results PDF from GLO — it fills in the draw label, date, and every
           prize tier below automatically. If a draw for that date already exists (for example one you created
-          when adding tickets), the results go into that draw. Review the numbers before saving.
+          when adding tickets), the results are saved into that draw. Review the numbers, save, then publish
+          it from the list.
         </p>
         <input type="file" accept="application/pdf" onChange={handlePdfUpload} disabled={parsing} />
         {parsing && <p style={{ fontSize: 13, color: "#5A6560", marginTop: 8 }}>Reading PDF…</p>}
@@ -285,16 +262,7 @@ export default function AdminDraws() {
       </div>
 
       <div className="ov-card" style={{ marginBottom: 20 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-          <strong style={{ fontSize: 13 }}>
-            {editingId ? `Results for ${draws.find((d) => d.id === editingId)?.label || "draw"}` : "Add draw"}
-          </strong>
-          {editingId && (
-            <button className="ov-btn-sm" onClick={resetForm}>
-              Cancel
-            </button>
-          )}
-        </div>
+        <strong style={{ fontSize: 13 }}>Add draw / results</strong>
         {notice && <p style={{ color: "#0B5C4A", fontSize: 13, margin: "8px 0 0" }}>{notice}</p>}
         <div className="ov-form-row" style={{ marginTop: 10 }}>
           <label>
@@ -354,7 +322,7 @@ export default function AdminDraws() {
         </button>
         <div>
           <button className="ov-btn-sm primary" onClick={saveDraw} disabled={saving || !label.trim() || !date}>
-            {saving ? "Saving…" : editingId ? "Save results" : "Create draw"}
+            {saving ? "Saving…" : "Save"}
           </button>
         </div>
       </div>
@@ -388,16 +356,11 @@ export default function AdminDraws() {
                   </span>
                 </td>
                 <td style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {!d.published && (
-                    <button className="ov-btn-sm" onClick={() => startAddResults(d)}>
-                      {hasResults(d) ? "Edit results" : "Add results"}
-                    </button>
-                  )}
                   <button
                     className={`ov-btn-sm${!d.published && hasResults(d) ? " primary" : ""}`}
                     onClick={() => togglePublish(d)}
                     disabled={publishingId === d.id || (!d.published && !hasResults(d))}
-                    title={!d.published && !hasResults(d) ? "Add results first" : undefined}
+                    title={!d.published && !hasResults(d) ? "Save results for this draw first" : undefined}
                   >
                     {publishingId === d.id ? "Working…" : d.published ? "Unpublish" : "Publish"}
                   </button>
