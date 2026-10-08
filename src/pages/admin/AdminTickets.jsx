@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { getCurrencySymbol, useSiteSettingsVersion } from "../../lib/siteSettingsStore";
 import Dropdown from "../../components/Dropdown";
-import DatePicker from "../../components/DatePicker";
+import DatePicker, { formatDateLabel } from "../../components/DatePicker";
 
 export default function AdminTickets() {
   useSiteSettingsVersion();
@@ -39,6 +39,12 @@ export default function AdminTickets() {
   const [splitModal, setSplitModal] = useState(null); // { ticket, priceA, groupA, priceB, groupB }
   const [splitting, setSplitting] = useState(false);
 
+  // Local (Bangkok) date, not UTC, so "today" flips at local midnight.
+  const today = (() => {
+    const n = new Date();
+    return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`;
+  })();
+
   async function load() {
     setLoading(true);
     setError("");
@@ -60,9 +66,21 @@ export default function AdminTickets() {
     load();
   }, []);
 
+  // Picking a date fills in the label (e.g. "16 October 2026") unless you've
+  // typed your own.
+  function changeNewDrawDate(value) {
+    setNewDrawLabel((prev) => (!prev.trim() || prev === formatDateLabel(newDrawDate) ? formatDateLabel(value) : prev));
+    setNewDrawDate(value);
+  }
+
   async function createDrawInline() {
-    if (!newDrawLabel.trim() || !newDrawDate) return;
+    if (!newDrawDate) return;
     setError("");
+    if (newDrawDate < today) {
+      setError("That date has already passed. Tickets need an upcoming draw, so pick a later date.");
+      return;
+    }
+    const label = newDrawLabel.trim() || formatDateLabel(newDrawDate);
     // One draw per date: if it already exists, select it instead of making a
     // duplicate (duplicates left the ticket-holding draw stuck as a draft).
     const existing = draws.find((d) => d.draw_date === newDrawDate);
@@ -76,7 +94,7 @@ export default function AdminTickets() {
     setCreatingDraw(true);
     const { data, error: insertError } = await supabase
       .from("draws")
-      .insert({ label: newDrawLabel.trim(), draw_date: newDrawDate, tiers: [], published: false })
+      .insert({ label, draw_date: newDrawDate, tiers: [], published: false })
       .select()
       .single();
     setCreatingDraw(false);
@@ -325,7 +343,6 @@ export default function AdminTickets() {
     load();
   }
 
-  const today = new Date().toISOString().slice(0, 10);
   const upcomingDraws = draws.filter((d) => d.draw_date >= today).sort((a, b) => (a.draw_date < b.draw_date ? -1 : 1));
   const drawDateById = {};
   draws.forEach((d) => (drawDateById[d.id] = d.draw_date));
@@ -423,7 +440,7 @@ export default function AdminTickets() {
                 className="ov-input"
                 value={newDrawLabel}
                 onChange={(e) => setNewDrawLabel(e.target.value)}
-                placeholder="16 September 2026"
+                placeholder="Fills in from the draw date"
               />
             </label>
             <label>
@@ -432,16 +449,17 @@ export default function AdminTickets() {
                 className="ov-input"
                 
                 value={newDrawDate}
-                onChange={(e) => setNewDrawDate(e.target.value)}
+                onChange={(e) => changeNewDrawDate(e.target.value)}
               />
             </label>
             <button
               className="ov-btn-sm primary"
               onClick={createDrawInline}
-              disabled={creatingDraw || !newDrawLabel.trim() || !newDrawDate}
+              disabled={creatingDraw || !newDrawDate}
             >
               {creatingDraw ? "Creating…" : "Create & use"}
             </button>
+            {!newDrawDate && <span style={{ fontSize: 12, color: "#5A6560" }}>Pick a draw date.</span>}
             <button className="ov-btn-sm" onClick={() => setShowNewDraw(false)}>
               Cancel
             </button>
@@ -456,6 +474,9 @@ export default function AdminTickets() {
           <button className="ov-btn-sm primary" onClick={addBulk} disabled={adding || !bulkDrawId || !bulkNumbers.trim()}>
             {adding ? "Adding…" : "Add tickets"}
           </button>
+          {bulkDrawId && !bulkNumbers.trim() && (
+            <span style={{ fontSize: 12, color: "#5A6560", marginLeft: 10 }}>Paste at least one ticket number.</span>
+          )}
         </div>
       </div>
 
