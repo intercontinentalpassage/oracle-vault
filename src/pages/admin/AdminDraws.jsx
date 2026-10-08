@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { getCurrencySymbol, useSiteSettingsVersion } from "../../lib/siteSettingsStore";
-import DatePicker from "../../components/DatePicker";
+import DatePicker, { formatDateLabel } from "../../components/DatePicker";
 
 const emptyTier = () => ({ label: "", prize: "", numbers: "" });
 
@@ -64,6 +64,18 @@ export default function AdminDraws() {
     return matches.sort((a, b) => ticketCount(b) - ticketCount(a))[0] || null;
   }
 
+  // Picking a date fills in the label (e.g. "16 October 2026") unless you've
+  // typed your own. A draw that already exists for that date keeps its label.
+  function changeDate(newDate) {
+    setDate(newDate);
+    const existing = findDrawForDate(newDate);
+    setLabel((prev) => {
+      const wasAuto = !prev.trim() || prev === formatDateLabel(date) || draws.some((d) => d.label === prev);
+      if (!wasAuto) return prev;
+      return existing ? existing.label : formatDateLabel(newDate);
+    });
+  }
+
   function resetForm() {
     setLabel("");
     setDate("");
@@ -110,7 +122,8 @@ export default function AdminDraws() {
   }
 
   async function saveDraw() {
-    if (!label.trim() || !date) return;
+    if (!date) return;
+    const finalLabel = label.trim() || formatDateLabel(date);
     setError("");
     setNotice("");
     const tiersPayload = tiers
@@ -137,7 +150,7 @@ export default function AdminDraws() {
     const targetId = existing?.id || null;
 
     setSaving(true);
-    const fields = { label: label.trim(), draw_date: date, tiers: tiersPayload };
+    const fields = { label: finalLabel, draw_date: date, tiers: tiersPayload };
     const { error: saveError } = targetId
       ? await supabase.from("draws").update(fields).eq("id", targetId)
       : await supabase.from("draws").insert({ ...fields, published: false });
@@ -318,12 +331,12 @@ export default function AdminDraws() {
               className="ov-input"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
-              placeholder="16 September 2026"
+              placeholder="Fills in from the draw date"
             />
           </label>
           <label>
             Draw date
-            <DatePicker className="ov-input" value={date} onChange={(e) => setDate(e.target.value)} />
+            <DatePicker className="ov-input" value={date} onChange={(e) => changeDate(e.target.value)} />
           </label>
         </div>
 
@@ -368,9 +381,10 @@ export default function AdminDraws() {
           + Add tier
         </button>
         <div>
-          <button className="ov-btn-sm primary" onClick={saveDraw} disabled={saving || !label.trim() || !date}>
+          <button className="ov-btn-sm primary" onClick={saveDraw} disabled={saving || !date}>
             {saving ? "Saving…" : "Save"}
           </button>
+          {!date && <span style={{ fontSize: 12, color: "#5A6560", marginLeft: 10 }}>Pick a draw date to save.</span>}
         </div>
       </div>
 
